@@ -39,7 +39,7 @@ export function AppNav({ pathname }: { pathname: string }) {
                 href={item.href}
                 className={
                   active
-                    ? "rounded-md bg-[var(--accent-soft)] px-2.5 py-1.5 font-medium text-[var(--accent)]"
+                    ? "rounded-md bg-[var(--accent-soft)] px-2.5 py-1.5 font-medium text-[var(--brand-blue)]"
                     : "rounded-md px-2.5 py-1.5 text-[var(--muted)] hover:bg-[var(--surface-2)] hover:text-[var(--fg)]"
                 }
               >
