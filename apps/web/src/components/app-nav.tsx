@@ -13,8 +13,19 @@ export function AppNav({ pathname }: { pathname: string }) {
   return (
     <header className="border-b border-[var(--border)] bg-[var(--surface)]">
       <div className="mx-auto flex max-w-6xl items-center gap-6 px-4 py-3">
-        <Link href="/" className="shrink-0 font-semibold tracking-tight text-[var(--fg)]">
-          Growth Agent
+        <Link
+          href="/"
+          className="flex shrink-0 items-center gap-2.5 tracking-tight text-[var(--fg)]"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/symbol.svg"
+            alt="Kinolin"
+            width={28}
+            height={28}
+            className="h-7 w-7 rounded-md"
+          />
+          <span className="font-semibold">Growth Agent</span>
         </Link>
         <nav className="flex flex-1 flex-wrap items-center gap-1 text-sm">
           {NAV.map((item) => {

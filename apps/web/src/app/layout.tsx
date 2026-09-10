@@ -17,6 +17,10 @@ export const metadata: Metadata = {
   title: "Website Growth Agent",
   description:
     "SEO + GEO + Analytics + Execution — 每天告诉你下一步做什么，并帮你做完。",
+  icons: {
+    icon: "/icon.svg",
+    apple: "/symbol.svg",
+  },
 };
 
 export default function RootLayout({
