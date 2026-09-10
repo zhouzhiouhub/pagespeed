@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { PageShell } from "@/components/page-shell";
+import { PagespeedReport } from "@/components/pagespeed-report";
 import { parseSiteUrl } from "@/lib/url";
 
 export default async function AuditPage({
@@ -14,25 +15,23 @@ export default async function AuditPage({
   return (
     <PageShell
       title="网站分析"
-      description="健康度与问题，带上「值不值得修」的语境。SEO + GEO 分数将在首次审计后出现。"
+      description="基于 PageSpeed Insights（Lighthouse）的性能、SEO、无障碍与最佳实践评分。"
     >
       {siteUrl ? (
-        <div className="space-y-4">
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-5 py-5">
-            <p className="text-sm text-[var(--muted)]">待分析站点</p>
+        <div className="space-y-5">
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-5 py-4">
+            <p className="text-sm text-[var(--muted)]">分析站点</p>
             <p className="mt-1 break-all text-lg font-medium text-[var(--fg)]">
               {siteUrl}
             </p>
-            <p className="mt-3 text-sm text-[var(--muted)]">
-              爬虫与审计流水线尚未接入（M1）。URL 已记录，可先返回 Dashboard 更换网站。
-            </p>
+            <Link
+              href="/"
+              className="mt-3 inline-flex text-sm font-medium text-[var(--brand-blue)] hover:underline"
+            >
+              ← 更换网站
+            </Link>
           </div>
-          <Link
-            href="/"
-            className="inline-flex text-sm font-medium text-[var(--brand-blue)] hover:underline"
-          >
-            ← 更换网站
-          </Link>
+          <PagespeedReport url={siteUrl} />
         </div>
       ) : (
         <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface)] px-6 py-16 text-center">
