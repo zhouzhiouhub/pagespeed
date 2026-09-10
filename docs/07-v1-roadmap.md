@@ -59,12 +59,12 @@ V4  + 自动执行 → 监控 → 再策略
 
 ### M0 · 工程基础
 
-- [ ] 初始化 monorepo 或 `apps/web` + `apps/api`
-- [ ] Postgres + 迁移框架（按 [04-database](./04-database.md)）
-- [ ] 任务队列与 cron 入口
-- [ ] 环境变量模板（LLM、Google OAuth、DB）
-- [ ] 基础鉴权（单用户可接受）
-- [ ] 空 UI 壳含 `/geo` 路由
+- [x] 初始化 monorepo 或 `apps/web` + `apps/api`（V1：`apps/web` Next 全栈）
+- [x] Postgres + 迁移框架（按 [04-database](./04-database.md)，Drizzle schema）
+- [x] 任务队列与 cron 入口（`src/server/jobs` 占位）
+- [x] 环境变量模板（LLM、Google OAuth、DB）
+- [x] 基础鉴权（单用户可接受，`src/server/auth` 骨架）
+- [x] 空 UI 壳含 `/geo` 路由
 
 ### M1 · Site Crawler & SEO / GEO Audit
 

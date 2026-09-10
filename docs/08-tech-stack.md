@@ -97,8 +97,9 @@ CRAWLER_MAX_PAGES=500
 
 | 项 | 状态 | 决定 |
 | --- | --- | --- |
-| UI 框架 | 待定 | |
-| 全栈 vs 分离 | 待定 | |
-| DB 托管 | 待定 | |
-| 队列 | 待定 | |
-| 首个站点 URL | 待定 | |
+| UI 框架 | **已定** | Next.js App Router + TypeScript + Tailwind（`apps/web`） |
+| 全栈 vs 分离 | **已定** | V1 单包 Next 全栈；`src/server/{crawler,agents,integrations,db,jobs}` |
+| ORM | **已定** | Drizzle + PostgreSQL |
+| DB 托管 | 本地优先 | `docker-compose` Postgres；生产可换 Neon/Supabase |
+| 队列 | 骨架 | Job 名称已占位；Inngest / BullMQ 待 M1–M2 选定 |
+| 首个站点 URL | 待定 | 建议 Kinolin |
