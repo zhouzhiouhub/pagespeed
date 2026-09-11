@@ -86,6 +86,20 @@ cd apps/web && npm run dev
 
 Google 登录会同时申请 GSC + GA4 只读，并持久化 refresh token（`.data/google-tokens.json`），供 cron 离线重拉。若此前已授权，请重新「连接 Google」以补齐 Analytics scope。
 
+## Cloudflare Workers 部署
+
+Workers Builds 建议配置：
+
+| 设置 | 值 |
+| --- | --- |
+| Root directory | `/`（仓库根） |
+| Build command | `npm run build` |
+| Deploy command | `npx wrangler deploy` |
+
+`npm run build` 会跑 OpenNext（`apps/web`），产物在 `apps/web/.open-next/`。根目录 `wrangler.jsonc` 指向该产物，因此默认的 `npx wrangler deploy` 可在 monorepo 根执行。
+
+也可显式部署子应用：`npm run deploy`（等价于在 `apps/web` 内执行 `opennextjs-cloudflare deploy`）。
+
 ## 仓库结构
 
 ```text

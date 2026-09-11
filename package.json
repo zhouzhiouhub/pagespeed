@@ -4,6 +4,7 @@
   "version": "0.1.0",
   "description": "Website Growth Agent — SEO + GEO + Analytics + Execution",
   "workspaces": [
+    ".",
     "apps/*",
     "packages/*"
   ],
@@ -26,5 +27,8 @@
     "workerd@1.20260910.1": true,
     "esbuild": true,
     "unrs-resolver": true
+  },
+  "devDependencies": {
+    "wrangler": "^4.131.0"
   }
 }
