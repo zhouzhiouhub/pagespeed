@@ -7,10 +7,10 @@ import { readSiteUrl } from "@/lib/site";
 const NAV = [
   { href: "/", label: "Dashboard", withSite: false },
   { href: "/audit", label: "网站分析", withSite: true },
-  { href: "/keywords", label: "关键词", withSite: false },
-  { href: "/content", label: "内容", withSite: false },
-  { href: "/geo", label: "GEO", withSite: false },
-  { href: "/advice", label: "增长建议", withSite: false },
+  { href: "/keywords", label: "关键词", withSite: true },
+  { href: "/content", label: "内容", withSite: true },
+  { href: "/geo", label: "GEO", withSite: true },
+  { href: "/advice", label: "增长建议", withSite: true },
 ] as const;
 
 function hostLabel(url: string) {
