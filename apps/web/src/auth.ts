@@ -1,5 +1,9 @@
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
+import { applyProxyDispatcher } from "@/server/http/proxy-bootstrap";
+import { proxiedFetch } from "@/server/http/fetch";
+
+applyProxyDispatcher();
 
 const GSC_SCOPE = "https://www.googleapis.com/auth/webmasters.readonly";
 
@@ -60,6 +64,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 });
 
 async function refreshGoogleAccessToken(refreshToken: string) {
+  applyProxyDispatcher();
   const body = new URLSearchParams({
     client_id: process.env.GOOGLE_CLIENT_ID ?? "",
     client_secret: process.env.GOOGLE_CLIENT_SECRET ?? "",
@@ -67,7 +72,7 @@ async function refreshGoogleAccessToken(refreshToken: string) {
     refresh_token: refreshToken,
   });
 
-  const res = await fetch("https://oauth2.googleapis.com/token", {
+  const res = await proxiedFetch("https://oauth2.googleapis.com/token", {
     method: "POST",
     headers: { "content-type": "application/x-www-form-urlencoded" },
     body,

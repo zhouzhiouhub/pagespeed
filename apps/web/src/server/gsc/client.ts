@@ -1,5 +1,4 @@
-import { getHttpDispatcher } from "@/server/http/fetch";
-import { fetch as undiciFetch } from "undici";
+import { proxiedFetch } from "@/server/http/fetch";
 import type { KeywordOpportunity } from "@/server/keywords/opportunities";
 import type { GscSite } from "@/server/gsc/store";
 
@@ -20,9 +19,8 @@ async function gscFetch<T>(
   url: string,
   init?: { method?: string; body?: unknown },
 ): Promise<T> {
-  const res = await undiciFetch(url, {
+  const res = await proxiedFetch(url, {
     method: init?.method ?? "GET",
-    dispatcher: getHttpDispatcher(),
     headers: {
       authorization: `Bearer ${accessToken}`,
       "content-type": "application/json",

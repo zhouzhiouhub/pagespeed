@@ -1,5 +1,7 @@
-import { fetch as undiciFetch } from "undici";
-import { getHttpDispatcher } from "@/server/http/fetch";
+import { proxiedFetch } from "@/server/http/fetch";
+import { applyProxyDispatcher } from "@/server/http/proxy-bootstrap";
+
+applyProxyDispatcher();
 
 export type LlmJsonResult = {
   text: string;
@@ -31,9 +33,8 @@ export async function generateText(prompt: string): Promise<LlmJsonResult> {
     "https://generativelanguage.googleapis.com";
   const endpoint = `${base}/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`;
 
-  const response = await undiciFetch(endpoint, {
+  const response = await proxiedFetch(endpoint, {
     method: "POST",
-    dispatcher: getHttpDispatcher(),
     headers: { "content-type": "application/json" },
     body: JSON.stringify({
       contents: [{ role: "user", parts: [{ text: prompt }] }],

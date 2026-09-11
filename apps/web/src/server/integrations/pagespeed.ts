@@ -1,4 +1,10 @@
-import { Agent, ProxyAgent, fetch as undiciFetch } from "undici";
+import {
+  proxiedFetch,
+  resetHttpDispatcher,
+} from "@/server/http/fetch";
+import { applyProxyDispatcher } from "@/server/http/proxy-bootstrap";
+
+applyProxyDispatcher();
 
 export type PsiStrategy = "mobile" | "desktop";
 
@@ -96,49 +102,6 @@ function requireApiKey(): string {
   return key;
 }
 
-function resolveProxyUrl(): string | null {
-  const candidates = [
-    process.env.PAGESPEED_HTTP_PROXY,
-    process.env.HTTPS_PROXY,
-    process.env.HTTP_PROXY,
-    process.env.ALL_PROXY,
-  ];
-  for (const value of candidates) {
-    const trimmed = value?.trim();
-    if (trimmed) return trimmed;
-  }
-  return null;
-}
-
-type Dispatcher = Agent | ProxyAgent;
-
-let sharedDispatcher: Dispatcher | null = null;
-let sharedDispatcherProxy: string | null | undefined;
-
-function getDispatcher(): Dispatcher {
-  const proxy = resolveProxyUrl();
-  if (sharedDispatcher && sharedDispatcherProxy === proxy) {
-    return sharedDispatcher;
-  }
-
-  sharedDispatcher?.close().catch(() => undefined);
-  sharedDispatcherProxy = proxy;
-  sharedDispatcher = proxy
-    ? new ProxyAgent(proxy)
-    : new Agent({
-        connectTimeout: 60_000,
-        headersTimeout: 120_000,
-        bodyTimeout: 120_000,
-      });
-  return sharedDispatcher;
-}
-
-function resetDispatcher() {
-  sharedDispatcher?.close().catch(() => undefined);
-  sharedDispatcher = null;
-  sharedDispatcherProxy = undefined;
-}
-
 function isTransientNetworkError(err: unknown): boolean {
   const message = err instanceof Error ? err.message : String(err);
   const cause = err instanceof Error ? err.cause : undefined;
@@ -174,7 +137,7 @@ function formatFetchError(err: unknown): string {
   const detail = cause?.message || err.message || "PageSpeed 请求失败";
 
   if (/tls|socket disconnected|secure tls/i.test(detail)) {
-    return `连接 Google 时 TLS 中断（多为本地代理不稳定）。请确认 Clash 等代理已开启且端口与 .env.local 中 HTTPS_PROXY 一致，然后重试。详情：${detail}`;
+    return `连接 Google 时 TLS 中断（多为本地代理不稳定）。请确认 Clash 系统代理/TUN 已开，端口与 .env.local 的 HTTPS_PROXY（当前多为 7897）一致，然后重启 npm run dev 再试。详情：${detail}`;
   }
   if (
     cause?.code === "UND_ERR_CONNECT_TIMEOUT" ||
@@ -289,9 +252,8 @@ async function fetchPageSpeedRaw(url: string, strategy: PsiStrategy) {
     endpoint.searchParams.append("category", category);
   }
 
-  return undiciFetch(endpoint, {
+  return proxiedFetch(endpoint, {
     method: "GET",
-    dispatcher: getDispatcher(),
   });
 }
 
@@ -351,7 +313,7 @@ export async function runPageSpeed(
     } catch (err) {
       lastError = err;
       if (attempt < MAX_ATTEMPTS && isTransientNetworkError(err)) {
-        resetDispatcher();
+        resetHttpDispatcher();
         await sleep(800 * attempt);
         continue;
       }

@@ -1,4 +1,7 @@
 import { Agent, ProxyAgent, fetch as undiciFetch } from "undici";
+import { applyProxyDispatcher } from "@/server/http/proxy-bootstrap";
+
+applyProxyDispatcher();
 
 function resolveProxyUrl(): string | null {
   const candidates = [
@@ -18,19 +21,61 @@ type Dispatcher = Agent | ProxyAgent;
 let shared: Dispatcher | null = null;
 let sharedProxy: string | null | undefined;
 
+export function resetHttpDispatcher() {
+  shared?.close().catch(() => undefined);
+  shared = null;
+  sharedProxy = undefined;
+}
+
 export function getHttpDispatcher(): Dispatcher {
   const proxy = resolveProxyUrl();
   if (shared && sharedProxy === proxy) return shared;
-  shared?.close().catch(() => undefined);
+  resetHttpDispatcher();
   sharedProxy = proxy;
   shared = proxy
-    ? new ProxyAgent(proxy)
+    ? new ProxyAgent({
+        uri: proxy,
+        requestTls: { timeout: 60_000 },
+        proxyTls: { timeout: 60_000 },
+      })
     : new Agent({
-        connectTimeout: 30_000,
-        headersTimeout: 60_000,
-        bodyTimeout: 60_000,
+        connectTimeout: 60_000,
+        headersTimeout: 120_000,
+        bodyTimeout: 120_000,
       });
   return shared;
+}
+
+function isTransient(err: unknown): boolean {
+  const msg = err instanceof Error ? `${err.message} ${err.cause ?? ""}` : String(err);
+  return /tls|socket|timeout|econnreset|econnrefused|und_err|fetch failed|network/i.test(
+    msg,
+  );
+}
+
+export async function proxiedFetch(
+  url: string | URL,
+  init?: Parameters<typeof undiciFetch>[1],
+) {
+  applyProxyDispatcher();
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      return await undiciFetch(url, {
+        ...init,
+        dispatcher: getHttpDispatcher(),
+      });
+    } catch (err) {
+      lastError = err;
+      if (attempt < 3 && isTransient(err)) {
+        resetHttpDispatcher();
+        await new Promise((r) => setTimeout(r, 700 * attempt));
+        continue;
+      }
+      break;
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error(String(lastError));
 }
 
 export async function fetchText(
@@ -41,11 +86,10 @@ export async function fetchText(
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const res = await undiciFetch(url, {
+    const res = await proxiedFetch(url, {
       method: "GET",
       redirect: "follow",
       signal: controller.signal,
-      dispatcher: getHttpDispatcher(),
       headers: {
         "user-agent":
           process.env.CRAWLER_USER_AGENT ??
