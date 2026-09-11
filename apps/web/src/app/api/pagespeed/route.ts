@@ -21,9 +21,12 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: parsed.error }, { status: 400 });
   }
 
-  if (!process.env.PAGESPEED_API_KEY?.trim()) {
+  if (
+    !process.env.PAGESPEED_API_KEY?.trim() &&
+    !process.env.GOOGLE_API_KEY?.trim()
+  ) {
     return NextResponse.json(
-      { error: "未配置 PAGESPEED_API_KEY" },
+      { error: "未配置 PAGESPEED_API_KEY 或 GOOGLE_API_KEY" },
       { status: 503 },
     );
   }

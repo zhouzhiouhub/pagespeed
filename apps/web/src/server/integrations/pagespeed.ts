@@ -87,9 +87,11 @@ const SKIP_SCORE_MODES = new Set([
 const MAX_ATTEMPTS = 3;
 
 function requireApiKey(): string {
-  const key = process.env.PAGESPEED_API_KEY?.trim();
+  const key =
+    process.env.PAGESPEED_API_KEY?.trim() ||
+    process.env.GOOGLE_API_KEY?.trim();
   if (!key) {
-    throw new Error("PAGESPEED_API_KEY is not configured");
+    throw new Error("PAGESPEED_API_KEY or GOOGLE_API_KEY is not configured");
   }
   return key;
 }
