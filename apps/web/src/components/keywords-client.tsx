@@ -14,6 +14,23 @@ import {
 import { parseSiteUrl } from "@/lib/url";
 import { readSiteUrl, writeSiteUrl } from "@/lib/site";
 
+type ActionPlan = {
+  query: string;
+  page: string;
+  summary: string;
+  estimatedLift: string;
+  titleOptions: string[];
+  metaDescription: string;
+  definitionBlock: string;
+  faq: Array<{ question: string; answer: string }>;
+  outline: string[];
+  internalLinks: string[];
+  schemaHints: string[];
+  steps: Array<{ order: number; title: string; content: string }>;
+  source: "ai" | "heuristic";
+  warning: string | null;
+};
+
 function stars(n: number) {
   const clamped = Math.max(1, Math.min(5, Math.round(n)));
   return "★".repeat(clamped) + "☆".repeat(5 - clamped);
@@ -106,11 +123,48 @@ function KeywordsTable({
   );
 }
 
-function DetailPanel({ item }: { item: KeywordOpportunity }) {
+function DetailPanel({
+  item,
+  siteUrl,
+}: {
+  item: KeywordOpportunity;
+  siteUrl: string;
+}) {
+  const [plan, setPlan] = useState<ActionPlan | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [planError, setPlanError] = useState<string | null>(null);
+
   const estimated =
     item.position != null
       ? `#${item.position} → #${Math.max(3, item.position - 8)}~${Math.max(5, item.position - 4)}`
       : "待 GSC 数据校准";
+
+  useEffect(() => {
+    setPlan(null);
+    setPlanError(null);
+  }, [item.query, item.page]);
+
+  async function generatePlan() {
+    setBusy(true);
+    setPlanError(null);
+    try {
+      const res = await fetch("/api/action-plan", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ url: siteUrl, opportunity: item }),
+      });
+      const json = (await res.json()) as ActionPlan & { error?: string };
+      if (!res.ok) {
+        setPlanError(json.error ?? "生成方案失败");
+        return;
+      }
+      setPlan(json);
+    } catch {
+      setPlanError("网络错误，请稍后重试");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   return (
     <aside className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-5 py-5">
@@ -150,13 +204,108 @@ function DetailPanel({ item }: { item: KeywordOpportunity }) {
       </dl>
       <button
         type="button"
-        className="mt-5 w-full rounded-lg bg-[var(--brand-blue)] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[var(--brand-blue-deep)]"
+        disabled={busy}
+        onClick={() => void generatePlan()}
+        className="mt-5 w-full rounded-lg bg-[var(--brand-blue)] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[var(--brand-blue-deep)] disabled:opacity-60"
       >
-        生成优化方案（即将接入 Agent）
+        {busy ? "正在生成方案…" : plan ? "重新生成优化方案" : "生成优化方案"}
       </button>
+
+      {planError ? (
+        <p className="mt-3 text-sm text-[#d93025]">{planError}</p>
+      ) : null}
+
+      {plan ? (
+        <div className="mt-5 space-y-4 border-t border-[var(--border)] pt-4 text-sm">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
+              优化方案
+              {plan.source === "ai" ? " · AI" : " · 规则模板"}
+            </p>
+            <p className="mt-2 leading-relaxed text-[var(--fg)]">{plan.summary}</p>
+            <p className="mt-1 text-[var(--muted)]">预计：{plan.estimatedLift}</p>
+            {plan.warning ? (
+              <p className="mt-2 text-xs text-[#8a5a00]">{plan.warning}</p>
+            ) : null}
+          </div>
+
+          <div>
+            <p className="font-medium text-[var(--fg)]">Title 候选</p>
+            <ul className="mt-1 list-disc space-y-1 pl-5 text-[var(--muted)]">
+              {plan.titleOptions.map((t) => (
+                <li key={t}>{t}</li>
+              ))}
+            </ul>
+          </div>
+
+          <div>
+            <p className="font-medium text-[var(--fg)]">Meta Description</p>
+            <p className="mt-1 text-[var(--muted)]">{plan.metaDescription}</p>
+          </div>
+
+          <div>
+            <p className="font-medium text-[var(--fg)]">首段直接答案</p>
+            <p className="mt-1 text-[var(--muted)]">{plan.definitionBlock}</p>
+          </div>
+
+          <div>
+            <p className="font-medium text-[var(--fg)]">FAQ</p>
+            <ul className="mt-2 space-y-2">
+              {plan.faq.map((f) => (
+                <li key={f.question}>
+                  <p className="font-medium text-[var(--fg)]">Q: {f.question}</p>
+                  <p className="text-[var(--muted)]">A: {f.answer}</p>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div>
+            <p className="font-medium text-[var(--fg)]">内容大纲</p>
+            <ol className="mt-1 list-decimal space-y-1 pl-5 text-[var(--muted)]">
+              {plan.outline.map((h) => (
+                <li key={h}>{h}</li>
+              ))}
+            </ol>
+          </div>
+
+          <div>
+            <p className="font-medium text-[var(--fg)]">内链建议</p>
+            <ul className="mt-1 list-disc space-y-1 pl-5 text-[var(--muted)]">
+              {plan.internalLinks.map((t) => (
+                <li key={t}>{t}</li>
+              ))}
+            </ul>
+          </div>
+
+          <div>
+            <p className="font-medium text-[var(--fg)]">结构化数据</p>
+            <ul className="mt-1 list-disc space-y-1 pl-5 text-[var(--muted)]">
+              {plan.schemaHints.map((t) => (
+                <li key={t}>{t}</li>
+              ))}
+            </ul>
+          </div>
+
+          <div>
+            <p className="font-medium text-[var(--fg)]">执行步骤</p>
+            <ol className="mt-2 space-y-2">
+              {plan.steps.map((s) => (
+                <li key={`${s.order}-${s.title}`}>
+                  <p className="font-medium text-[var(--fg)]">
+                    {s.order}. {s.title}
+                  </p>
+                  <p className="text-[var(--muted)]">{s.content}</p>
+                </li>
+              ))}
+            </ol>
+          </div>
+        </div>
+      ) : null}
     </aside>
   );
 }
+
 
 export function KeywordsClient({ initialUrl }: { initialUrl: string | null }) {
   const router = useRouter();
@@ -330,7 +479,9 @@ export function KeywordsClient({ initialUrl }: { initialUrl: string | null }) {
                 selected={selectedItem?.query ?? null}
                 onSelect={setSelected}
               />
-              {selectedItem ? <DetailPanel item={selectedItem} /> : null}
+              {selectedItem && siteUrl ? (
+                <DetailPanel item={selectedItem} siteUrl={siteUrl} />
+              ) : null}
             </div>
           ) : null}
 
