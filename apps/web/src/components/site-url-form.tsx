@@ -3,8 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { parseSiteUrl } from "@/lib/url";
-
-const SITE_STORAGE_KEY = "webagent:site-url";
+import { SITE_STORAGE_KEY, writeSiteUrl } from "@/lib/site";
 
 export function SiteUrlForm({
   initialUrl = "",
@@ -37,11 +36,7 @@ export function SiteUrlForm({
     }
 
     setError(null);
-    try {
-      localStorage.setItem(SITE_STORAGE_KEY, result.url);
-    } catch {
-      // ignore quota / private mode
-    }
+    writeSiteUrl(result.url);
 
     startTransition(() => {
       router.push(`/audit?url=${encodeURIComponent(result.url)}`);
@@ -99,5 +94,3 @@ export function SiteUrlForm({
     </form>
   );
 }
-
-export { SITE_STORAGE_KEY };

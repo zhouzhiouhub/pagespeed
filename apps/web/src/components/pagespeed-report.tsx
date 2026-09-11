@@ -1,35 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-
-type PsiStrategy = "mobile" | "desktop";
-
-type PsiOpportunity = {
-  id: string;
-  title: string;
-  description: string | null;
-  displayValue: string | null;
-  score: number | null;
-  category: string;
-  categoryTitle: string;
-  kind: "opportunity" | "diagnostic" | "fail";
-  savingsMs: number | null;
-};
-
-type PsiSummary = {
-  url: string;
-  strategy: PsiStrategy;
-  fetchTime: string | null;
-  scores: Array<{ id: string; title: string; score: number | null }>;
-  metrics: Array<{
-    id: string;
-    title: string;
-    displayValue: string | null;
-    score: number | null;
-  }>;
-  opportunities?: PsiOpportunity[];
-  seoAudits?: PsiOpportunity[];
-};
+import {
+  getCachedPsi,
+  setCachedPsi,
+  type PsiStrategy,
+  type PsiSummary,
+  type PsiOpportunity,
+} from "@/lib/pagespeed-cache";
+import { writeSiteUrl } from "@/lib/site";
 
 function scoreTone(score: number | null): string {
   if (score === null) return "text-[var(--muted)]";
@@ -61,28 +40,57 @@ export function PagespeedReport({ url }: { url: string }) {
   const [strategy, setStrategy] = useState<PsiStrategy>("mobile");
   const [data, setData] = useState<PsiSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [fromCache, setFromCache] = useState(false);
 
-  const load = useCallback(async (nextStrategy: PsiStrategy) => {
-    setLoading(true);
-    setError(null);
-    setData(null);
-    try {
-      const res = await fetch(
-        `/api/pagespeed?url=${encodeURIComponent(url)}&strategy=${nextStrategy}`,
-      );
-      const json = (await res.json()) as PsiSummary & { error?: string };
-      if (!res.ok) {
-        setError(json.error ?? "分析失败");
-        return;
-      }
-      setData(json);
-    } catch {
-      setError("网络错误，请稍后重试");
-    } finally {
-      setLoading(false);
-    }
+  useEffect(() => {
+    writeSiteUrl(url);
   }, [url]);
+
+  const load = useCallback(
+    async (nextStrategy: PsiStrategy, opts?: { force?: boolean }) => {
+      const force = opts?.force ?? false;
+      if (!force) {
+        const cached = getCachedPsi(url, nextStrategy);
+        if (cached) {
+          setData(cached);
+          setFromCache(true);
+          setError(null);
+          setLoading(false);
+          return;
+        }
+      }
+
+      setLoading(true);
+      setError(null);
+      if (force) {
+        // Keep previous result visible while refreshing
+        setFromCache(false);
+      } else {
+        setData(null);
+        setFromCache(false);
+      }
+
+      try {
+        const res = await fetch(
+          `/api/pagespeed?url=${encodeURIComponent(url)}&strategy=${nextStrategy}`,
+        );
+        const json = (await res.json()) as PsiSummary & { error?: string };
+        if (!res.ok) {
+          setError(json.error ?? "分析失败");
+          return;
+        }
+        setCachedPsi(url, nextStrategy, json);
+        setData(json);
+        setFromCache(false);
+      } catch {
+        setError("网络错误，请稍后重试");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [url],
+  );
 
   useEffect(() => {
     void load(strategy);
@@ -125,8 +133,18 @@ export function PagespeedReport({ url }: { url: string }) {
             </button>
           ))}
         </div>
+        <button
+          type="button"
+          disabled={loading}
+          onClick={() => void load(strategy, { force: true })}
+          className="rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-sm font-medium text-[var(--fg)] hover:bg-[var(--surface-2)] disabled:opacity-60"
+        >
+          {loading ? "刷新中…" : "刷新分析"}
+        </button>
         {loading ? (
           <p className="text-sm text-[var(--muted)]">正在分析页面性能…</p>
+        ) : fromCache && data ? (
+          <p className="text-sm text-[var(--muted)]">已显示缓存结果，可点刷新获取最新</p>
         ) : null}
       </div>
 
@@ -139,7 +157,7 @@ export function PagespeedReport({ url }: { url: string }) {
           <button
             type="button"
             disabled={loading}
-            onClick={() => void load(strategy)}
+            onClick={() => void load(strategy, { force: true })}
             className="rounded-md bg-[var(--brand-blue)] px-3 py-1.5 text-sm font-medium text-white disabled:opacity-60"
           >
             重试分析
