@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
 import { parseSiteUrl } from "@/lib/url";
+import { applyProxyDispatcher } from "@/server/http/proxy-bootstrap";
 import { fetchText } from "@/server/http/fetch";
 import { extractPageSignals } from "@/server/keywords/extract";
 import { buildKeywordOpportunities } from "@/server/keywords/opportunities";
 import { readGscStore } from "@/server/gsc/store";
+
+applyProxyDispatcher();
 
 export const runtime = "nodejs";
 export const maxDuration = 60;

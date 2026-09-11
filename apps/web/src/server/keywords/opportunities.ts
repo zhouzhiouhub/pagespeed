@@ -153,17 +153,21 @@ export async function buildKeywordOpportunities(
       return {
         items,
         source: "ai",
-        model: process.env.LLM_MODEL?.trim() || "gemini-2.5-flash",
+        model: process.env.LLM_MODEL?.trim() || "gemini-3.6-flash",
         warning: "尚未连接 Google Search Console，排名/趋势为 AI 估计，接入 GSC 后替换为真实查询数据。",
       };
     } catch (err) {
       const message = err instanceof Error ? err.message : "LLM failed";
       const items = heuristicOpportunities(siteUrl, signals);
+      const locationBlocked = /location is not supported/i.test(message);
+      const warning = locationBlocked
+        ? "Gemini 当前出口地区不可用（User location is not supported）。请让 Clash 使用美/日/新等可用节点，并确认系统代理/TUN 已开启；或改用可用的 LLM_BASE_URL 中转。已降级为页面启发式。连接 GSC 后可显示真实排名机会。"
+        : `AI 生成失败（${message}），已降级为页面启发式候选。连接 GSC 后可显示真实排名机会。`;
       return {
         items,
         source: "heuristic",
         model: null,
-        warning: `AI 生成失败（${message}），已降级为页面启发式候选。连接 GSC 后可显示真实排名机会。`,
+        warning,
       };
     }
   }

@@ -15,7 +15,7 @@ function requireKey(): string {
 }
 
 function modelName(): string {
-  return (process.env.LLM_MODEL?.trim() || "gemini-2.5-flash").replace(
+  return (process.env.LLM_MODEL?.trim() || "gemini-3.6-flash").replace(
     /^models\//,
     "",
   );
