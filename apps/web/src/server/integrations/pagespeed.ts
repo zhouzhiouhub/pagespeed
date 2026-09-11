@@ -15,40 +15,55 @@ export type PsiMetric = {
   score: number | null;
 };
 
+export type PsiOpportunity = {
+  id: string;
+  title: string;
+  description: string | null;
+  displayValue: string | null;
+  score: number | null;
+  category: string;
+  categoryTitle: string;
+  kind: "opportunity" | "diagnostic" | "fail";
+  savingsMs: number | null;
+};
+
 export type PsiSummary = {
   url: string;
   strategy: PsiStrategy;
   fetchTime: string | null;
   scores: PsiCategoryScore[];
   metrics: PsiMetric[];
-  seoAudits: Array<{
-    id: string;
-    title: string;
-    description: string | null;
-    score: number | null;
-    displayValue: string | null;
-  }>;
+  /** @deprecated use opportunities */
+  seoAudits: PsiOpportunity[];
+  opportunities: PsiOpportunity[];
+};
+
+type LighthouseAudit = {
+  id?: string;
+  title?: string;
+  description?: string;
+  score?: number | null;
+  scoreDisplayMode?: string;
+  displayValue?: string;
+  details?: {
+    type?: string;
+    overallSavingsMs?: number;
+  };
+};
+
+type LighthouseCategory = {
+  id?: string;
+  title?: string;
+  score?: number | null;
+  auditRefs?: Array<{ id?: string; weight?: number; group?: string }>;
 };
 
 type PsiApiResponse = {
   id?: string;
   lighthouseResult?: {
     fetchTime?: string;
-    categories?: Record<
-      string,
-      { id?: string; title?: string; score?: number | null }
-    >;
-    audits?: Record<
-      string,
-      {
-        id?: string;
-        title?: string;
-        description?: string;
-        score?: number | null;
-        displayValue?: string;
-        details?: { type?: string };
-      }
-    >;
+    categories?: Record<string, LighthouseCategory>;
+    audits?: Record<string, LighthouseAudit>;
   };
   error?: { message?: string; code?: number };
 };
@@ -62,18 +77,11 @@ const METRIC_IDS = [
   "interactive",
 ] as const;
 
-const SEO_AUDIT_IDS = new Set([
-  "meta-description",
-  "document-title",
-  "crawlable-anchors",
-  "is-crawlable",
-  "robots-txt",
-  "hreflang",
-  "canonical",
-  "link-text",
-  "image-alt",
-  "http-status-code",
-  "viewport",
+const SKIP_SCORE_MODES = new Set([
+  "informative",
+  "manual",
+  "notApplicable",
+  "error",
 ]);
 
 const MAX_ATTEMPTS = 3;
@@ -179,6 +187,88 @@ function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function stripMarkdownLinks(text: string): string {
+  return text.replace(/\[([^\]]+)\]\([^)]+\)/g, "$1").replace(/\s+/g, " ").trim();
+}
+
+function collectOpportunities(
+  categories: Record<string, LighthouseCategory>,
+  audits: Record<string, LighthouseAudit>,
+): PsiOpportunity[] {
+  const seen = new Set<string>();
+  const items: PsiOpportunity[] = [];
+
+  for (const category of Object.values(categories)) {
+    const categoryId = category.id ?? "other";
+    const categoryTitle = category.title ?? categoryId;
+
+    for (const ref of category.auditRefs ?? []) {
+      const auditId = ref.id;
+      if (!auditId || seen.has(auditId)) continue;
+
+      const audit = audits[auditId];
+      if (!audit?.title) continue;
+
+      const mode = audit.scoreDisplayMode ?? "";
+      if (SKIP_SCORE_MODES.has(mode)) continue;
+
+      const group = ref.group ?? "";
+      const detailsType = audit.details?.type ?? "";
+      const score = typeof audit.score === "number" ? audit.score : null;
+      const savingsMs =
+        typeof audit.details?.overallSavingsMs === "number"
+          ? Math.round(audit.details.overallSavingsMs)
+          : null;
+
+      const isOpportunity =
+        detailsType === "opportunity" ||
+        group === "load-opportunities" ||
+        group === "opportunities";
+      const isDiagnostic = group === "diagnostics";
+      const isFail = score !== null && score < 1;
+
+      // Keep actionable items: savings opportunities, diagnostics, or failed checks
+      if (!isOpportunity && !isDiagnostic && !isFail) continue;
+      // Skip perfect binary passes
+      if (score === 1 && !isOpportunity) continue;
+      // Metrics already shown above
+      if (group === "metrics" || METRIC_IDS.includes(auditId as (typeof METRIC_IDS)[number])) {
+        continue;
+      }
+
+      let kind: PsiOpportunity["kind"] = "fail";
+      if (isOpportunity) kind = "opportunity";
+      else if (isDiagnostic) kind = "diagnostic";
+
+      seen.add(auditId);
+      items.push({
+        id: auditId,
+        title: audit.title,
+        description: audit.description
+          ? stripMarkdownLinks(audit.description)
+          : null,
+        displayValue: audit.displayValue ?? null,
+        score,
+        category: categoryId,
+        categoryTitle,
+        kind,
+        savingsMs,
+      });
+    }
+  }
+
+  const kindRank = { opportunity: 0, diagnostic: 1, fail: 2 } as const;
+  items.sort((a, b) => {
+    const kindDiff = kindRank[a.kind] - kindRank[b.kind];
+    if (kindDiff !== 0) return kindDiff;
+    const saveDiff = (b.savingsMs ?? 0) - (a.savingsMs ?? 0);
+    if (saveDiff !== 0) return saveDiff;
+    return (a.score ?? 1) - (b.score ?? 1);
+  });
+
+  return items.slice(0, 40);
+}
+
 async function fetchPageSpeedRaw(url: string, strategy: PsiStrategy) {
   const key = requireApiKey();
   const endpoint = new URL(
@@ -225,15 +315,15 @@ export async function runPageSpeed(
         throw new Error("PageSpeed API returned no lighthouseResult");
       }
 
-      const scores: PsiCategoryScore[] = Object.values(
-        lighthouse.categories ?? {},
-      ).map((c) => ({
+      const categories = lighthouse.categories ?? {};
+      const audits = lighthouse.audits ?? {};
+
+      const scores: PsiCategoryScore[] = Object.values(categories).map((c) => ({
         id: c.id ?? "",
         title: c.title ?? c.id ?? "",
         score: typeof c.score === "number" ? Math.round(c.score * 100) : null,
       }));
 
-      const audits = lighthouse.audits ?? {};
       const metrics: PsiMetric[] = METRIC_IDS.map((id) => {
         const a = audits[id];
         return {
@@ -244,26 +334,8 @@ export async function runPageSpeed(
         };
       });
 
-      const failedUseful = Object.values(audits)
-        .filter(
-          (a) =>
-            typeof a.score === "number" &&
-            a.score < 1 &&
-            Boolean(a.title) &&
-            a.details?.type !== "debugdata",
-        )
-        .filter((a) => {
-          const id = a.id ?? "";
-          return id.includes("seo") || SEO_AUDIT_IDS.has(id);
-        })
-        .slice(0, 10)
-        .map((a) => ({
-          id: a.id ?? "",
-          title: a.title ?? "",
-          description: a.description ?? null,
-          score: typeof a.score === "number" ? a.score : null,
-          displayValue: a.displayValue ?? null,
-        }));
+      const opportunities = collectOpportunities(categories, audits);
+      const seoAudits = opportunities.filter((o) => o.category === "seo");
 
       return {
         url: data.id ?? url,
@@ -271,7 +343,8 @@ export async function runPageSpeed(
         fetchTime: lighthouse.fetchTime ?? null,
         scores,
         metrics,
-        seoAudits: failedUseful,
+        seoAudits,
+        opportunities,
       };
     } catch (err) {
       lastError = err;
