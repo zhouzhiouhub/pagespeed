@@ -8,12 +8,13 @@ import {
   draftsFromGsc,
   persistOpportunities,
 } from "@/server/insights/opportunities-store";
-import { parseSiteUrl } from "@/lib/url";
+import { parseSiteUrl, localeFromRequest } from "@/lib/url";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
 export async function POST(request: Request) {
+  const locale = localeFromRequest(request);
   const session = await auth();
   const token = await getGoogleAccessToken({
     sessionAccessToken: session?.accessToken,
@@ -44,7 +45,7 @@ export async function POST(request: Request) {
   const siteUrl = parsed?.ok ? parsed.url : (await readGscStore()).siteUrl;
 
   try {
-    const synced = await syncGscProperty(token.accessToken, property);
+    const synced = await syncGscProperty(token.accessToken, property, locale);
     const store = {
       selectedProperty: property,
       siteUrl,

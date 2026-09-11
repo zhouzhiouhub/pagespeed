@@ -6,28 +6,40 @@ import { readAdviceRun } from "@/server/advice/store";
 import { getLatestAuditForUrl, ensureSite } from "@/server/sites/repo";
 import { isDatabaseAvailable } from "@/server/db/ready";
 import { parseSiteUrl, localeFromRequest, localizedUrlError } from "@/lib/url";
+import { translate } from "@/lib/i18n/messages";
 
 export const runtime = "nodejs";
 
 export async function GET(request: Request) {
+  const locale = localeFromRequest(request);
   const urlParam = new URL(request.url).searchParams.get("url");
   if (!urlParam) {
-    return NextResponse.json({ error: "缺少 url" }, { status: 400 });
+    return NextResponse.json(
+      { error: translate(locale, "server.api.missingUrl") },
+      { status: 400 },
+    );
   }
   const parsed = parseSiteUrl(urlParam);
   if (!parsed.ok) {
-    return NextResponse.json({ error: localizedUrlError(parsed.code, localeFromRequest(request)) }, { status: 400 });
+    return NextResponse.json(
+      { error: localizedUrlError(parsed.code, locale) },
+      { status: 400 },
+    );
   }
 
   const site = await ensureSite(parsed.url);
   const latest = await getLatestAuditForUrl(parsed.url);
   const gsc = await readGscStore();
   const advice = await readAdviceRun(parsed.url);
-  const ga4 = await getGa4Status(parsed.url);
+  const ga4 = await getGa4Status(parsed.url, locale);
   const pagespeed = await getIntegrationStatus(site.id, "pagespeed");
   const dbOk = await isDatabaseAvailable();
 
   const gscConnected = Boolean(gsc.selectedProperty && gsc.lastSyncedAt);
+  const openCount = advice
+    ? advice.items.filter((i) => i.userState === "open").length
+    : 0;
+  const adviceLocaleOk = advice?.locale ? advice.locale === locale : false;
 
   return NextResponse.json({
     site: {
@@ -68,8 +80,12 @@ export async function GET(request: Request) {
       ? {
           runId: advice.runId,
           generatedAt: advice.generatedAt,
-          headline: advice.headline,
-          openCount: advice.items.filter((i) => i.userState === "open").length,
+          headline: adviceLocaleOk
+            ? advice.headline
+            : translate(locale, "server.advice.headlineOpen", {
+                count: openCount,
+              }),
+          openCount,
           itemCount: advice.items.length,
         }
       : null,

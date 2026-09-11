@@ -2,6 +2,12 @@ import { z } from "zod";
 import type { PageSignals } from "@/server/keywords/extract";
 import { generateText, safeParseJsonArray } from "@/server/llm/gemini";
 import { readGscStore } from "@/server/gsc/store";
+import {
+  DEFAULT_LOCALE,
+  llmLanguageRule,
+  type Locale,
+} from "@/lib/i18n/locale";
+import { translate } from "@/lib/i18n/messages";
 
 export type ContentGap = {
   id: string;
@@ -52,7 +58,14 @@ function normalizePath(pathOrUrl: string): string {
   }
 }
 
-function heuristicGaps(siteUrl: string, signals: PageSignals): ContentGap[] {
+function heuristicGaps(
+  siteUrl: string,
+  signals: PageSignals,
+  locale: Locale,
+): ContentGap[] {
+  const t = (key: Parameters<typeof translate>[1], params?: Record<string, string | number>) =>
+    translate(locale, key, params);
+
   const host = (() => {
     try {
       return new URL(siteUrl).hostname.replace(/^www\./, "");
@@ -68,7 +81,7 @@ function heuristicGaps(siteUrl: string, signals: PageSignals): ContentGap[] {
   const topicSeeds = [
     ...signals.h2.slice(0, 8),
     ...signals.navTexts
-      .filter((t) => t.length >= 2 && t.length <= 32 && !noisy.test(t))
+      .filter((x) => x.length >= 2 && x.length <= 32 && !noisy.test(x))
       .slice(0, 8),
   ]
     .map((s) => s.trim())
@@ -78,33 +91,33 @@ function heuristicGaps(siteUrl: string, signals: PageSignals): ContentGap[] {
 
   const templates: Array<Omit<ContentGap, "id">> = [
     {
-      title: `${brand} 使用指南 / Getting Started`,
-      targetKeyword: `${brand} 教程`,
+      title: t("server.content.guideTitle", { brand }),
+      targetKeyword: t("server.content.guideKeyword", { brand }),
       potential: 5,
       suggestedPath: `/blog/${slugify(`${brand}-guide`)}`,
       intent: "informational",
-      rationale: `首页有产品信号，但缺少面向「如何上手」的独立指南页。答案型长文可同时服务 SEO 与 GEO 引用。`,
-      geoHint: "首段直接答案 + 分步清单 + FAQPage",
+      rationale: t("server.content.guideRationale"),
+      geoHint: t("server.content.guideGeo"),
       source: "heuristic",
     },
     {
-      title: `${brand} vs 常见替代方案`,
-      targetKeyword: `${brand} 替代`,
+      title: t("server.content.vsTitle", { brand }),
+      targetKeyword: t("server.content.vsKeyword", { brand }),
       potential: 4,
       suggestedPath: `/blog/${slugify(`${brand}-vs-alternatives`)}`,
       intent: "commercial",
-      rationale: `对比意图搜索常见且转化高；当前页面未覆盖清晰对比结构。`,
-      geoHint: "用表格对比关键维度，便于 AI 摘录",
+      rationale: t("server.content.vsRationale"),
+      geoHint: t("server.content.vsGeo"),
       source: "heuristic",
     },
     {
-      title: `什么是 ${brand}？功能与适用场景`,
-      targetKeyword: `${brand} 是什么`,
+      title: t("server.content.whatTitle", { brand }),
+      targetKeyword: t("server.content.whatKeyword", { brand }),
       potential: 4,
       suggestedPath: `/blog/${slugify(`what-is-${brand}`)}`,
       intent: "informational",
-      rationale: `定义型查询适合首段直接答案结构；有利于搜索摘要与生成式引擎引用。`,
-      geoHint: "定义段 2–4 句 + Entity/SoftwareApplication Schema",
+      rationale: t("server.content.whatRationale"),
+      geoHint: t("server.content.whatGeo"),
       source: "heuristic",
     },
   ];
@@ -113,15 +126,15 @@ function heuristicGaps(siteUrl: string, signals: PageSignals): ContentGap[] {
     const path = `/blog/${slugify(topic)}`;
     const isQuestion = /如何|什么|怎么|why|how|what|\?|？/i.test(topic);
     return {
-      title: isQuestion ? topic : `关于「${topic}」的完整说明`,
+      title: isQuestion ? topic : t("server.content.topicTitle", { topic }),
       targetKeyword: topic,
       potential: Math.max(2, 5 - Math.floor(index / 2)),
       suggestedPath: path,
       intent: isQuestion ? "informational" : "commercial",
-      rationale: `从首页 H2/导航提取主题「${topic}」，未见独立内容页覆盖。建议写成答案型专页。`,
+      rationale: t("server.content.topicRationale", { topic }),
       geoHint: isQuestion
-        ? "问题型：首段直接答 + FAQ 3+"
-        : "主题型：定义 + 场景 + 步骤",
+        ? t("server.content.topicGeoQuestion")
+        : t("server.content.topicGeoTheme"),
       source: "heuristic" as const,
     };
   });
@@ -142,21 +155,23 @@ function heuristicGaps(siteUrl: string, signals: PageSignals): ContentGap[] {
 async function aiGaps(
   siteUrl: string,
   signals: PageSignals,
+  locale: Locale,
 ): Promise<ContentGap[]> {
-  const prompt = `你是 Website Growth 的 Content Agent。根据站点首页信号，找出「该写但还没写」的内容缺口（不是改现有页）。
-站点: ${siteUrl}
-页面信号:
+  const prompt = `You are the Website Growth Content Agent. From homepage signals, find content gaps that should be written but are missing (not edits to existing pages).
+Site: ${siteUrl}
+Page signals:
 ${JSON.stringify(signals, null, 2)}
 
-输出 JSON 数组，每项字段:
-title, targetKeyword, potential(1-5), suggestedPath(/blog/... 或 /docs/...), intent, rationale, geoHint(可null)
+Output a JSON array; each item fields:
+title, targetKeyword, potential(1-5), suggestedPath(/blog/... or /docs/...), intent, rationale, geoHint(nullable)
 
-要求:
-1. 6-10 条，优先答案型/指南/对比/FAQ 主题
-2. suggestedPath 用英文 slug，合理且不重复
-3. 说明为何是缺口（有主题信号但无专页）
-4. geoHint 提示如何做成可被 AI 引用的结构
-5. 中文或英文随站点语言；只输出 JSON`;
+Requirements:
+1. 6-10 items; prefer answer/guide/comparison/FAQ topics
+2. suggestedPath must use English slugs, reasonable and unique
+3. Explain why it is a gap (topic signal without a dedicated page)
+4. geoHint should say how to make it citable by AI
+5. ${llmLanguageRule(locale)}
+6. JSON only`;
 
   const { text } = await generateText(prompt);
   const raw = safeParseJsonArray<unknown>(text);
@@ -189,12 +204,16 @@ title, targetKeyword, potential(1-5), suggestedPath(/blog/... 或 /docs/...), in
 export async function buildContentGaps(
   siteUrl: string,
   signals: PageSignals,
+  locale: Locale = DEFAULT_LOCALE,
 ): Promise<{
   items: ContentGap[];
   source: "gsc" | "ai" | "heuristic";
   model: string | null;
   warning: string | null;
 }> {
+  const t = (key: Parameters<typeof translate>[1], params?: Record<string, string | number>) =>
+    translate(locale, key, params);
+
   const store = await readGscStore();
   const sameSite =
     store.siteUrl &&
@@ -225,7 +244,7 @@ export async function buildContentGaps(
         const path = `/blog/${slugify(r.query)}`;
         return {
           id: makeId(r.query, path),
-          title: `为「${r.query}」创建专页`,
+          title: t("server.content.gscTitle", { query: r.query }),
           targetKeyword: r.query,
           potential:
             r.impressions >= 200
@@ -239,8 +258,12 @@ export async function buildContentGaps(
           intent: /如何|什么|怎么|how|what|vs|对比/i.test(r.query)
             ? "informational"
             : "commercial",
-          rationale: `GSC：查询「${r.query}」展示 ${r.impressions}、点击 ${r.clicks}，但落地偏首页/浅路径。适合拆成独立内容页承接意图。`,
-          geoHint: "专页首段直接回答查询意图 + FAQ",
+          rationale: t("server.content.gscRationale", {
+            query: r.query,
+            impressions: r.impressions,
+            clicks: r.clicks,
+          }),
+          geoHint: t("server.content.gscGeo"),
           source: "gsc" as const,
         };
       });
@@ -258,34 +281,32 @@ export async function buildContentGaps(
   const hasLlm = Boolean(process.env.LLM_API_KEY?.trim());
   if (hasLlm) {
     try {
-      const items = await aiGaps(siteUrl, signals);
+      const items = await aiGaps(siteUrl, signals, locale);
       return {
         items,
         source: "ai",
         model: process.env.LLM_MODEL?.trim() || "gemini-3.6-flash",
-        warning:
-          "尚未用 GSC 校验内容缺口。当前为 AI 基于首页主题推断；接入并同步 GSC 后，会优先展示「有展现、无专页」的真实缺口。",
+        warning: t("server.content.warnAi"),
       };
     } catch (err) {
       const message = err instanceof Error ? err.message : "LLM failed";
-      const items = heuristicGaps(siteUrl, signals);
+      const items = heuristicGaps(siteUrl, signals, locale);
       const locationBlocked = /location is not supported/i.test(message);
       return {
         items,
         source: "heuristic",
         model: null,
         warning: locationBlocked
-          ? "Gemini 地区不可用，已用规则模板生成内容缺口。可切换海外代理后重试。"
-          : `AI 生成失败（${message}），已降级为启发式内容缺口。`,
+          ? t("server.content.warnLocation")
+          : t("server.content.warnAiFail", { message }),
       };
     }
   }
 
   return {
-    items: heuristicGaps(siteUrl, signals),
+    items: heuristicGaps(siteUrl, signals, locale),
     source: "heuristic",
     model: null,
-    warning:
-      "未配置 LLM_API_KEY。当前为首页标题层级/导航启发式内容缺口；配置 LLM 或连接 GSC 后更准。",
+    warning: t("server.content.warnNoLlm"),
   };
 }

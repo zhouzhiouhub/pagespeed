@@ -6,6 +6,7 @@ export {
   dateLocale,
   htmlLang,
   isLocale,
+  llmLanguageRule,
   psiLocale,
   type Locale,
 } from "./locale";

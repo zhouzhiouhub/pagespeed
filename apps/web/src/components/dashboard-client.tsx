@@ -98,7 +98,7 @@ export function DashboardClient({ initialUrl }: { initialUrl: string | null }) {
         setLoading(false);
       }
     },
-    [t],
+    [t, locale],
   );
 
   const loadAnalytics = useCallback(

@@ -224,7 +224,7 @@ export function AdviceClient({ initialUrl }: { initialUrl: string | null }) {
     async (url: string, opts?: { force?: boolean }) => {
       const force = opts?.force ?? false;
       if (!force) {
-        const cached = getCachedAdvice(url);
+        const cached = getCachedAdvice(url, locale);
         if (cached) {
           setData(cached);
           setFromCache(true);
@@ -251,7 +251,7 @@ export function AdviceClient({ initialUrl }: { initialUrl: string | null }) {
           setError(json.error ?? t("advice.generateFailed"));
           return;
         }
-        setCachedAdvice(url, json);
+        setCachedAdvice(url, json, locale);
         setData(json);
         setFromCache(false);
       } catch {
@@ -260,7 +260,7 @@ export function AdviceClient({ initialUrl }: { initialUrl: string | null }) {
         setLoading(false);
       }
     },
-    [t],
+    [t, locale],
   );
 
   useEffect(() => {
@@ -282,7 +282,7 @@ export function AdviceClient({ initialUrl }: { initialUrl: string | null }) {
         setError(json.error ?? t("advice.updateFailed"));
         return;
       }
-      setCachedAdvice(siteUrl, json);
+      setCachedAdvice(siteUrl, json, locale);
       setData(json);
     } catch {
       setError(t("common.networkError"));

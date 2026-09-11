@@ -1,6 +1,12 @@
 import { z } from "zod";
 import type { PageSignals } from "@/server/keywords/extract";
 import { generateText, safeParseJsonArray } from "@/server/llm/gemini";
+import {
+  DEFAULT_LOCALE,
+  llmLanguageRule,
+  type Locale,
+} from "@/lib/i18n/locale";
+import { translate } from "@/lib/i18n/messages";
 
 export type KeywordOpportunity = {
   query: string;
@@ -43,7 +49,11 @@ function normalizePage(pathOrUrl: string, siteUrl: string): string {
 function heuristicOpportunities(
   siteUrl: string,
   signals: PageSignals,
+  locale: Locale,
 ): KeywordOpportunity[] {
+  const t = (key: Parameters<typeof translate>[1], params?: Record<string, string | number>) =>
+    translate(locale, key, params);
+
   const host = (() => {
     try {
       return new URL(siteUrl).hostname.replace(/^www\./, "");
@@ -67,8 +77,8 @@ function heuristicOpportunities(
     ...signals.h2.slice(0, 10),
     brand,
     `${brand} remote desktop`,
-    `${brand} 下载`,
-    `${brand} 替代`,
+    t("server.keywords.seedDownload", { brand }),
+    t("server.keywords.seedAlt", { brand }),
   ]
     .filter(Boolean)
     .map((s) => String(s).trim())
@@ -84,11 +94,18 @@ function heuristicOpportunities(
       potential,
       page: normalizePage(signals.url, siteUrl),
       trend7d: index % 2 === 0 ? -(1 + (index % 5)) : index % 3,
-      intent: /如何|什么|怎么|how|what|vs|对比|替代/i.test(query)
+      intent: /如何|什么|怎么|how|what|vs|对比|替代|alternatives|download/i.test(
+        query,
+      )
         ? "informational"
         : "commercial",
-      rationale: `从页面 Title/H1/H2 提取的候选词（站点：${host}）。未连接 GSC，排名与趋势为启发式占位，仅用于机会排期；接入 Search Console 后会替换为真实查询数据。`,
-      actions: ["优化 Title/H1", "补充 FAQ / 定义段", "加强相关内链", "检查搜索意图覆盖"],
+      rationale: t("server.keywords.rationale", { host }),
+      actions: [
+        t("server.keywords.actionTitle"),
+        t("server.keywords.actionFaq"),
+        t("server.keywords.actionLinks"),
+        t("server.keywords.actionIntent"),
+      ],
       source: "heuristic" as const,
     };
   });
@@ -97,18 +114,20 @@ function heuristicOpportunities(
 async function aiOpportunities(
   siteUrl: string,
   signals: PageSignals,
+  locale: Locale,
 ): Promise<KeywordOpportunity[]> {
-  const prompt = `你是 SEO Keyword Agent。根据站点页面信号，产出「值得抢」的关键词机会（不是词库堆砌）。
-站点: ${siteUrl}
-页面信号 JSON:
+  const prompt = `You are an SEO Keyword Agent. From page signals, produce keyword opportunities worth winning (not a keyword dump).
+Site: ${siteUrl}
+Page signals JSON:
 ${JSON.stringify(signals, null, 2)}
 
-要求:
-1. 输出 JSON 数组，每项字段: query, position(8-25或null), potential(1-5整数), page(路径), trend7d(负数=排名上升, 可为null), intent, rationale, actions(字符串数组)
-2. 优先: 产品/品类词、问题型长尾、与现有落地页接近的词
-3. 不要编造离谱搜索量数字; position/trend 若无真实 GSC 数据，给合理的「待验证」估计并在 rationale 说明
-4. 8-12 条，中文或英文随站点语言
-5. 只输出 JSON`;
+Requirements:
+1. Output a JSON array; each item fields: query, position(8-25 or null), potential(1-5 int), page(path), trend7d(negative = rank improving, nullable), intent, rationale, actions(string array)
+2. Prefer: product/category terms, question long-tails, terms close to existing landing pages
+3. Do not invent absurd search-volume numbers; if no real GSC data, give reasonable "to verify" estimates and say so in rationale
+4. 8-12 items
+5. ${llmLanguageRule(locale)}
+6. JSON only`;
 
   const { text } = await generateText(prompt);
   const raw = safeParseJsonArray<unknown>(text);
@@ -140,29 +159,33 @@ ${JSON.stringify(signals, null, 2)}
 export async function buildKeywordOpportunities(
   siteUrl: string,
   signals: PageSignals,
+  locale: Locale = DEFAULT_LOCALE,
 ): Promise<{
   items: KeywordOpportunity[];
   source: "ai" | "heuristic";
   model: string | null;
   warning: string | null;
 }> {
+  const t = (key: Parameters<typeof translate>[1], params?: Record<string, string | number>) =>
+    translate(locale, key, params);
+
   const hasLlm = Boolean(process.env.LLM_API_KEY?.trim());
   if (hasLlm) {
     try {
-      const items = await aiOpportunities(siteUrl, signals);
+      const items = await aiOpportunities(siteUrl, signals, locale);
       return {
         items,
         source: "ai",
         model: process.env.LLM_MODEL?.trim() || "gemini-3.6-flash",
-        warning: "尚未连接 Google Search Console，排名/趋势为 AI 估计，接入 GSC 后替换为真实查询数据。",
+        warning: t("server.keywords.warnAiEstimate"),
       };
     } catch (err) {
       const message = err instanceof Error ? err.message : "LLM failed";
-      const items = heuristicOpportunities(siteUrl, signals);
+      const items = heuristicOpportunities(siteUrl, signals, locale);
       const locationBlocked = /location is not supported/i.test(message);
       const warning = locationBlocked
-        ? "Gemini 当前出口地区不可用（User location is not supported）。请让 Clash 使用美/日/新等可用节点，并确认系统代理/TUN 已开启；或改用可用的 LLM_BASE_URL 中转。已降级为页面启发式。连接 GSC 后可显示真实排名机会。"
-        : `AI 生成失败（${message}），已降级为页面启发式候选。连接 GSC 后可显示真实排名机会。`;
+        ? t("server.keywords.warnLocation")
+        : t("server.keywords.warnAiFail", { message });
       return {
         items,
         source: "heuristic",
@@ -173,10 +196,9 @@ export async function buildKeywordOpportunities(
   }
 
   return {
-    items: heuristicOpportunities(siteUrl, signals),
+    items: heuristicOpportunities(siteUrl, signals, locale),
     source: "heuristic",
     model: null,
-    warning:
-      "未配置 LLM_API_KEY，且尚未连接 GSC。当前为页面标题/标题层级启发式候选。",
+    warning: t("server.keywords.warnNoLlm"),
   };
 }

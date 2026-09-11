@@ -31,8 +31,12 @@ export type KeywordsResponse = {
   items: KeywordOpportunity[];
 };
 
-const CACHE_KEY = "webagent:keywords-cache:v1";
+const CACHE_KEY = "webagent:keywords-cache:v2";
 const memory = new Map<string, { savedAt: number; data: KeywordsResponse }>();
+
+function cacheId(url: string, locale = "zh") {
+  return `${locale}::${url}`;
+}
 
 function readStore(): Record<string, { savedAt: number; data: KeywordsResponse }> {
   if (typeof window === "undefined") return {};
@@ -54,21 +58,30 @@ function writeStore(
   }
 }
 
-export function getCachedKeywords(url: string): KeywordsResponse | null {
-  const mem = memory.get(url);
+export function getCachedKeywords(
+  url: string,
+  locale = "zh",
+): KeywordsResponse | null {
+  const id = cacheId(url, locale);
+  const mem = memory.get(id);
   if (mem) return mem.data;
   const store = readStore();
-  const entry = store[url];
+  const entry = store[id];
   if (!entry) return null;
-  memory.set(url, entry);
+  memory.set(id, entry);
   return entry.data;
 }
 
-export function setCachedKeywords(url: string, data: KeywordsResponse) {
+export function setCachedKeywords(
+  url: string,
+  data: KeywordsResponse,
+  locale = "zh",
+) {
+  const id = cacheId(url, locale);
   const entry = { savedAt: Date.now(), data };
-  memory.set(url, entry);
+  memory.set(id, entry);
   const store = readStore();
-  store[url] = entry;
+  store[id] = entry;
   const keys = Object.keys(store).sort(
     (a, b) => (store[b]?.savedAt ?? 0) - (store[a]?.savedAt ?? 0),
   );

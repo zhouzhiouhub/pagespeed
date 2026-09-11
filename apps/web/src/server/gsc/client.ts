@@ -1,6 +1,8 @@
 import { proxiedFetch } from "@/server/http/fetch";
 import type { KeywordOpportunity } from "@/server/keywords/opportunities";
 import type { GscSite } from "@/server/gsc/store";
+import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/locale";
+import { translate } from "@/lib/i18n/messages";
 
 type SearchAnalyticsRow = {
   keys?: string[];
@@ -82,6 +84,7 @@ function expectedCtr(position: number): number {
 export function buildGscKeywordOpportunities(
   current: SearchAnalyticsRow[],
   previous: SearchAnalyticsRow[],
+  locale: Locale = DEFAULT_LOCALE,
 ): {
   rows: Array<{
     query: string;
@@ -139,21 +142,38 @@ export function buildGscKeywordOpportunities(
         // keep raw
       }
 
+      const position = Number(r.position.toFixed(1));
+      const ctrPct = (r.ctr * 100).toFixed(2);
+      const inWinZone = r.position >= 8 && r.position <= 20;
+      const rationale = translate(
+        locale,
+        inWinZone
+          ? "server.gscOpp.rationaleWin"
+          : "server.gscOpp.rationaleWatch",
+        {
+          impressions: r.impressions,
+          clicks: r.clicks,
+          position,
+          ctr: ctrPct,
+        },
+      );
+
       return {
         query: r.query,
-        position: Number(r.position.toFixed(1)),
+        position,
         potential,
         page: path,
         trend7d,
         intent: /如何|什么|怎么|how|what|vs|对比/i.test(r.query)
           ? "informational"
           : "commercial",
-        rationale: `GSC 近 28 天：展示 ${r.impressions}，点击 ${r.clicks}，均位 ${r.position.toFixed(1)}，CTR ${(r.ctr * 100).toFixed(2)}%。${
-          r.position >= 8 && r.position <= 20
-            ? "处于 8–20 抢位区间，优先优化落地页。"
-            : "有展现基础，可继续观察或小幅优化。"
-        }`,
-        actions: ["优化 Title/H1", "补充 FAQ / 定义段", "加强相关内链", "核对搜索意图"],
+        rationale,
+        actions: [
+          translate(locale, "server.gscOpp.actionTitle"),
+          translate(locale, "server.gscOpp.actionFaq"),
+          translate(locale, "server.gscOpp.actionLinks"),
+          translate(locale, "server.gscOpp.actionIntent"),
+        ],
         source: "gsc" as const,
       };
     })
@@ -163,7 +183,11 @@ export function buildGscKeywordOpportunities(
   return { rows, opportunities };
 }
 
-export async function syncGscProperty(accessToken: string, property: string) {
+export async function syncGscProperty(
+  accessToken: string,
+  property: string,
+  locale: Locale = DEFAULT_LOCALE,
+) {
   const end = new Date();
   end.setUTCDate(end.getUTCDate() - 3); // GSC delay
   const start = new Date(end);
@@ -178,7 +202,7 @@ export async function syncGscProperty(accessToken: string, property: string) {
     querySearchAnalytics(accessToken, property, isoDate(prevStart), isoDate(prevEnd)),
   ]);
 
-  return buildGscKeywordOpportunities(current, previous);
+  return buildGscKeywordOpportunities(current, previous, locale);
 }
 
 /** Match analyzed site URL to a GSC property when possible. */

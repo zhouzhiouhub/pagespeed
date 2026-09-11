@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { PageShell } from "@/components/page-shell";
 import { GscConnectPanel } from "@/components/gsc-connect-panel";
-import { useT } from "@/components/i18n-provider";
+import { useI18n, useT } from "@/components/i18n-provider";
 import {
   getCachedKeywords,
   setCachedKeywords,
@@ -329,6 +329,7 @@ function DetailPanel({
 export function KeywordsClient({ initialUrl }: { initialUrl: string | null }) {
   const router = useRouter();
   const t = useT();
+  const { locale } = useI18n();
   const [siteUrl, setSiteUrl] = useState<string | null>(initialUrl);
   const [data, setData] = useState<KeywordsResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -354,7 +355,7 @@ export function KeywordsClient({ initialUrl }: { initialUrl: string | null }) {
     async (url: string, opts?: { force?: boolean }) => {
       const force = opts?.force ?? false;
       if (!force) {
-        const cached = getCachedKeywords(url);
+        const cached = getCachedKeywords(url, locale);
         if (cached) {
           setData(cached);
           setFromCache(true);
@@ -381,7 +382,7 @@ export function KeywordsClient({ initialUrl }: { initialUrl: string | null }) {
           setError(json.error ?? t("keywords.analyzeFailed"));
           return;
         }
-        setCachedKeywords(url, json);
+        setCachedKeywords(url, json, locale);
         setData(json);
         setFromCache(false);
         setSelected(json.items[0]?.query ?? null);
@@ -391,7 +392,7 @@ export function KeywordsClient({ initialUrl }: { initialUrl: string | null }) {
         setLoading(false);
       }
     },
-    [t],
+    [t, locale],
   );
 
   useEffect(() => {
@@ -424,7 +425,7 @@ export function KeywordsClient({ initialUrl }: { initialUrl: string | null }) {
             onSynced={() => {
               // Force reload from server GSC store
               try {
-                sessionStorage.removeItem("webagent:keywords-cache:v1");
+                sessionStorage.removeItem("webagent:keywords-cache:v2");
               } catch {
                 // ignore
               }

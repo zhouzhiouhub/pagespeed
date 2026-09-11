@@ -15,11 +15,25 @@ import {
   type AdviceRunRecord,
   type AdviceUserState,
 } from "@/server/advice/store";
+import {
+  DEFAULT_LOCALE,
+  llmLanguageRule,
+  type Locale,
+} from "@/lib/i18n/locale";
+import { translate, type MessageKey } from "@/lib/i18n/messages";
 
 type Candidate = Omit<AdviceItemRecord, "userState">;
 
 function siteKey(url: string) {
   return url;
+}
+
+function t(
+  locale: Locale,
+  key: MessageKey,
+  params?: Record<string, string | number>,
+) {
+  return translate(locale, key, params);
 }
 
 function mergeUserStates(
@@ -39,7 +53,10 @@ function priorityFromScore(score: number): AdviceItemRecord["priority"] {
   return "growth";
 }
 
-async function collectCandidates(siteUrl: string): Promise<{
+async function collectCandidates(
+  siteUrl: string,
+  locale: Locale,
+): Promise<{
   candidates: Candidate[];
   sources: string[];
   warning: string | null;
@@ -63,7 +80,7 @@ async function collectCandidates(siteUrl: string): Promise<{
         id: `kw-gsc:${op.query}`,
         priority: priorityFromScore(score),
         type: "keyword",
-        title: `关键词「${op.query}」可抢位`,
+        title: t(locale, "server.advice.kwGrabTitle", { query: op.query }),
         summary: op.rationale,
         evidence: {
           query: op.query,
@@ -75,7 +92,7 @@ async function collectCandidates(siteUrl: string): Promise<{
         suggestedActions: op.actions,
         score,
         href: `/keywords?url=${encodeURIComponent(siteUrl)}`,
-        ctaLabel: "查看关键词",
+        ctaLabel: t(locale, "server.advice.viewKeywords"),
       });
     }
   }
@@ -89,10 +106,16 @@ async function collectCandidates(siteUrl: string): Promise<{
       fetchedUrl = page.finalUrl || siteUrl;
       sources.push("crawl");
     } else {
-      warnings.push(`页面抓取失败 HTTP ${page.status}`);
+      warnings.push(
+        t(locale, "server.advice.crawlFailedHttp", { status: page.status }),
+      );
     }
   } catch (err) {
-    warnings.push(err instanceof Error ? err.message : "页面抓取失败");
+    warnings.push(
+      err instanceof Error
+        ? err.message
+        : t(locale, "server.advice.crawlFailed"),
+    );
   }
 
   if (pageHtml) {
@@ -100,7 +123,7 @@ async function collectCandidates(siteUrl: string): Promise<{
 
     if (!sameSite || gsc.opportunities.length === 0) {
       try {
-        const kw = await buildKeywordOpportunities(siteUrl, signals);
+        const kw = await buildKeywordOpportunities(siteUrl, signals, locale);
         sources.push(`keywords:${kw.source}`);
         if (kw.warning) warnings.push(kw.warning);
         for (const op of kw.items.slice(0, 5)) {
@@ -109,7 +132,7 @@ async function collectCandidates(siteUrl: string): Promise<{
             id: `kw:${op.query}`,
             priority: priorityFromScore(score),
             type: "keyword",
-            title: `关键词机会「${op.query}」`,
+            title: t(locale, "server.advice.kwOppTitle", { query: op.query }),
             summary: op.rationale,
             evidence: {
               query: op.query,
@@ -121,18 +144,22 @@ async function collectCandidates(siteUrl: string): Promise<{
             suggestedActions: op.actions,
             score,
             href: `/keywords?url=${encodeURIComponent(siteUrl)}`,
-            ctaLabel: "查看关键词",
+            ctaLabel: t(locale, "server.advice.viewKeywords"),
           });
         }
       } catch (err) {
         warnings.push(
-          err instanceof Error ? `关键词: ${err.message}` : "关键词分析失败",
+          err instanceof Error
+            ? t(locale, "server.advice.kwFailedPrefixed", {
+                message: err.message,
+              })
+            : t(locale, "server.advice.kwFailed"),
         );
       }
     }
 
     try {
-      const gaps = await buildContentGaps(siteUrl, signals);
+      const gaps = await buildContentGaps(siteUrl, signals, locale);
       sources.push(`content:${gaps.source}`);
       if (gaps.warning) warnings.push(gaps.warning);
       for (const gap of gaps.items.slice(0, 4)) {
@@ -149,15 +176,22 @@ async function collectCandidates(siteUrl: string): Promise<{
             potential: gap.potential,
             source: gap.source,
           },
-          suggestedActions: ["生成内容 Brief", "规划大纲与 FAQ"],
+          suggestedActions: [
+            t(locale, "server.advice.contentActionBrief"),
+            t(locale, "server.advice.contentActionOutline"),
+          ],
           score,
           href: `/content?url=${encodeURIComponent(siteUrl)}`,
-          ctaLabel: "查看内容机会",
+          ctaLabel: t(locale, "server.advice.viewContent"),
         });
       }
     } catch (err) {
       warnings.push(
-        err instanceof Error ? `内容: ${err.message}` : "内容缺口分析失败",
+        err instanceof Error
+          ? t(locale, "server.advice.contentFailedPrefixed", {
+              message: err.message,
+            })
+          : t(locale, "server.advice.contentFailed"),
       );
     }
   }
@@ -171,7 +205,10 @@ async function collectCandidates(siteUrl: string): Promise<{
         id: `geo-score:${geo.score}`,
         priority: geo.score < 50 ? "high" : "medium",
         type: "geo_readiness",
-        title: `GEO Readiness ${geo.score}（${geo.page.pageKindLabel}）`,
+        title: t(locale, "server.advice.geoScoreTitle", {
+          score: geo.score,
+          kind: geo.page.pageKindLabel,
+        }),
         summary: geo.page.pageKindReason,
         evidence: {
           score: geo.score,
@@ -181,7 +218,7 @@ async function collectCandidates(siteUrl: string): Promise<{
         suggestedActions: geo.page.expectationLabels.slice(0, 4),
         score: Math.min(0.92, (100 - geo.score) / 100 + 0.35),
         href: `/geo?url=${encodeURIComponent(siteUrl)}`,
-        ctaLabel: "查看 GEO",
+        ctaLabel: t(locale, "server.advice.viewGeo"),
       });
     }
     for (const item of geo.items.slice(0, 5)) {
@@ -200,11 +237,17 @@ async function collectCandidates(siteUrl: string): Promise<{
         suggestedActions: item.actions,
         score,
         href: `/geo?url=${encodeURIComponent(siteUrl)}`,
-        ctaLabel: "生成 GEO 方案",
+        ctaLabel: t(locale, "server.advice.generateGeoPlan"),
       });
     }
   } catch (err) {
-    warnings.push(err instanceof Error ? `GEO: ${err.message}` : "GEO 分析失败");
+    warnings.push(
+      err instanceof Error
+        ? t(locale, "server.advice.geoFailedPrefixed", {
+            message: err.message,
+          })
+        : t(locale, "server.advice.geoFailed"),
+    );
   }
 
   try {
@@ -221,8 +264,11 @@ async function collectCandidates(siteUrl: string): Promise<{
         id: `ga4-top:${top.path}`,
         priority: "medium",
         type: "cro",
-        title: `高流量页「${top.path}」可做转化/GEO 加固`,
-        summary: `近 7 天约 ${top.sessions} sessions / ${top.users} users。优先检查答案块、FAQ、CTA 与内链。`,
+        title: t(locale, "server.advice.ga4TopTitle", { path: top.path }),
+        summary: t(locale, "server.advice.ga4TopSummary", {
+          sessions: top.sessions,
+          users: top.users,
+        }),
         evidence: {
           path: top.path,
           sessions: top.sessions,
@@ -231,17 +277,23 @@ async function collectCandidates(siteUrl: string): Promise<{
           users7d: ga4.users7d,
         },
         suggestedActions: [
-          "核对首屏直接答案与 CTA",
-          "补 FAQ / Schema",
-          "从相关内容页加强内链",
+          t(locale, "server.advice.ga4ActionAnswer"),
+          t(locale, "server.advice.ga4ActionFaq"),
+          t(locale, "server.advice.ga4ActionLinks"),
         ],
         score: 0.62,
         href: `/geo?url=${encodeURIComponent(siteUrl)}`,
-        ctaLabel: "查看 GEO",
+        ctaLabel: t(locale, "server.advice.viewGeo"),
       });
     }
   } catch (err) {
-    warnings.push(err instanceof Error ? `GA4: ${err.message}` : "GA4 读取失败");
+    warnings.push(
+      err instanceof Error
+        ? t(locale, "server.advice.ga4FailedPrefixed", {
+            message: err.message,
+          })
+        : t(locale, "server.advice.ga4Failed"),
+    );
   }
 
   if (process.env.PAGESPEED_API_KEY?.trim() || process.env.GOOGLE_API_KEY?.trim()) {
@@ -267,15 +319,19 @@ async function collectCandidates(siteUrl: string): Promise<{
             seo,
             strategy: "mobile",
           },
-          suggestedActions: ["查看网站分析详情并逐项修复"],
+          suggestedActions: [t(locale, "server.advice.psiFixAction")],
           score,
           href: `/audit?url=${encodeURIComponent(siteUrl)}`,
-          ctaLabel: "查看网站分析",
+          ctaLabel: t(locale, "server.advice.viewAudit"),
         });
       }
     } catch (err) {
       warnings.push(
-        err instanceof Error ? `PageSpeed: ${err.message}` : "PageSpeed 失败",
+        err instanceof Error
+          ? t(locale, "server.advice.pagespeedFailedPrefixed", {
+              message: err.message,
+            })
+          : t(locale, "server.advice.pagespeedFailed"),
       );
     }
   }
@@ -309,14 +365,18 @@ const polishSchema = z.object({
 async function polishWithLlm(
   siteUrl: string,
   items: AdviceItemRecord[],
+  locale: Locale,
 ): Promise<{ greeting: string; headline: string; order: string[] | null; model: string | null }> {
+  const openCount = items.filter((i) => i.userState === "open").length;
+  const fallback = {
+    greeting: t(locale, "server.advice.greeting"),
+    headline: t(locale, "server.advice.headlineOpen", { count: openCount }),
+    order: null as string[] | null,
+    model: null as string | null,
+  };
+
   if (!process.env.LLM_API_KEY?.trim()) {
-    return {
-      greeting: "今日增长建议",
-      headline: `今天发现 ${items.filter((i) => i.userState === "open").length} 个值得处理的问题`,
-      order: null,
-      model: null,
-    };
+    return fallback;
   }
 
   try {
@@ -335,7 +395,7 @@ Items JSON: ${JSON.stringify(
 
 Return JSON: { "greeting": "...", "headline": "...", "order": ["itemId", ...] }
 Rules:
-- Match the language of item titles (Chinese site → Chinese).
+- ${llmLanguageRule(locale)}
 - greeting like a colleague standup, not an audit scare.
 - headline states how many open items matter today.
 - order is optional re-rank of ids (same set).
@@ -356,12 +416,7 @@ Rules:
       model,
     };
   } catch {
-    return {
-      greeting: "今日增长建议",
-      headline: `今天发现 ${items.filter((i) => i.userState === "open").length} 个值得处理的问题`,
-      order: null,
-      model: null,
-    };
+    return fallback;
   }
 }
 
@@ -385,28 +440,34 @@ function applyOrder(
 
 export async function composeDailyAdvice(
   siteUrl: string,
-  opts?: { force?: boolean },
+  opts?: { force?: boolean; locale?: Locale },
 ): Promise<AdviceRunRecord> {
   const force = opts?.force ?? false;
+  const locale = opts?.locale ?? DEFAULT_LOCALE;
   const prev = await readAdviceRun(siteUrl);
 
   if (!force && prev) {
     const ageMs = Date.now() - new Date(prev.generatedAt).getTime();
-    if (ageMs < 30 * 60 * 1000) {
+    const localeMatch = !prev.locale || prev.locale === locale;
+    if (ageMs < 30 * 60 * 1000 && localeMatch) {
       return prev;
     }
   }
 
-  const { candidates, sources, warning } = await collectCandidates(siteUrl);
+  const { candidates, sources, warning } = await collectCandidates(
+    siteUrl,
+    locale,
+  );
   let items = mergeUserStates(candidates, prev);
 
-  const polish = await polishWithLlm(siteUrl, items);
+  const polish = await polishWithLlm(siteUrl, items, locale);
   items = applyOrder(items, polish.order);
 
   const run: AdviceRunRecord = {
     siteUrl: siteKey(siteUrl),
     runId: `advice_${Date.now()}`,
     generatedAt: new Date().toISOString(),
+    locale,
     greeting: polish.greeting,
     headline: polish.headline,
     sources,

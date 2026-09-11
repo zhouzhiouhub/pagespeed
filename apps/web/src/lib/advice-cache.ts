@@ -26,8 +26,12 @@ export type AdviceResponse = {
   items: AdviceItem[];
 };
 
-const CACHE_KEY = "webagent:advice-cache:v1";
+const CACHE_KEY = "webagent:advice-cache:v2";
 const memory = new Map<string, { savedAt: number; data: AdviceResponse }>();
+
+function cacheId(url: string, locale = "zh") {
+  return `${locale}::${url}`;
+}
 
 function readStore(): Record<string, { savedAt: number; data: AdviceResponse }> {
   if (typeof window === "undefined") return {};
@@ -51,21 +55,30 @@ function writeStore(
   }
 }
 
-export function getCachedAdvice(url: string): AdviceResponse | null {
-  const mem = memory.get(url);
+export function getCachedAdvice(
+  url: string,
+  locale = "zh",
+): AdviceResponse | null {
+  const id = cacheId(url, locale);
+  const mem = memory.get(id);
   if (mem) return mem.data;
   const store = readStore();
-  const entry = store[url];
+  const entry = store[id];
   if (!entry) return null;
-  memory.set(url, entry);
+  memory.set(id, entry);
   return entry.data;
 }
 
-export function setCachedAdvice(url: string, data: AdviceResponse) {
+export function setCachedAdvice(
+  url: string,
+  data: AdviceResponse,
+  locale = "zh",
+) {
+  const id = cacheId(url, locale);
   const entry = { savedAt: Date.now(), data };
-  memory.set(url, entry);
+  memory.set(id, entry);
   const store = readStore();
-  store[url] = entry;
+  store[id] = entry;
   const keys = Object.keys(store).sort(
     (a, b) => (store[b]?.savedAt ?? 0) - (store[a]?.savedAt ?? 0),
   );

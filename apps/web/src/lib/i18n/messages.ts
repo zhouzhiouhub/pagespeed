@@ -284,6 +284,119 @@ export const messages = {
       syncGa4: "同步 GA4",
       lastSynced: "上次同步 {time}",
     },
+    server: {
+      llm: {
+        languageRule:
+          "所有面向用户的文案（标题、理由、动作、警告、关键词短语）必须用中文。",
+      },
+      api: {
+        missingUrl: "缺少 url",
+        missingUrlParam: "缺少 url 参数",
+        fetchFailedHttp: "抓取站点失败（HTTP {status}）",
+        keywordsFailed: "关键词分析失败",
+        contentFailed: "内容缺口分析失败",
+        adviceFailed: "生成增长建议失败",
+      },
+      ga4Notes: {
+        synced: "GA4 已同步近 7 天页级数据",
+        authorized: "已授权 Analytics，请在 Dashboard 选择 property 并同步",
+        connect: "连接 Google（含 Analytics 只读）后可同步 GA4",
+      },
+      gscOpp: {
+        rationaleWin:
+          "GSC 近 28 天：展示 {impressions}，点击 {clicks}，均位 {position}，CTR {ctr}%。处于 8–20 抢位区间，优先优化落地页。",
+        rationaleWatch:
+          "GSC 近 28 天：展示 {impressions}，点击 {clicks}，均位 {position}，CTR {ctr}%。有展现基础，可继续观察或小幅优化。",
+        actionTitle: "优化 Title/H1",
+        actionFaq: "补充 FAQ / 定义段",
+        actionLinks: "加强相关内链",
+        actionIntent: "核对搜索意图",
+      },
+      advice: {
+        greeting: "今日增长建议",
+        headlineOpen: "今天发现 {count} 个值得处理的问题",
+        kwGrabTitle: "关键词「{query}」可抢位",
+        kwOppTitle: "关键词机会「{query}」",
+        viewKeywords: "查看关键词",
+        viewContent: "查看内容机会",
+        viewGeo: "查看 GEO",
+        viewAudit: "查看网站分析",
+        generateGeoPlan: "生成 GEO 方案",
+        contentActionBrief: "生成内容 Brief",
+        contentActionOutline: "规划大纲与 FAQ",
+        crawlFailedHttp: "页面抓取失败 HTTP {status}",
+        crawlFailed: "页面抓取失败",
+        kwFailed: "关键词分析失败",
+        kwFailedPrefixed: "关键词: {message}",
+        contentFailed: "内容缺口分析失败",
+        contentFailedPrefixed: "内容: {message}",
+        geoFailed: "GEO 分析失败",
+        geoFailedPrefixed: "GEO: {message}",
+        ga4Failed: "GA4 读取失败",
+        ga4FailedPrefixed: "GA4: {message}",
+        pagespeedFailed: "PageSpeed 失败",
+        pagespeedFailedPrefixed: "PageSpeed: {message}",
+        ga4TopTitle: "高流量页「{path}」可做转化/GEO 加固",
+        ga4TopSummary:
+          "近 7 天约 {sessions} sessions / {users} users。优先检查答案块、FAQ、CTA 与内链。",
+        ga4ActionAnswer: "核对首屏直接答案与 CTA",
+        ga4ActionFaq: "补 FAQ / Schema",
+        ga4ActionLinks: "从相关内容页加强内链",
+        psiFixAction: "查看网站分析详情并逐项修复",
+        geoScoreTitle: "GEO Readiness {score}（{kind}）",
+      },
+      keywords: {
+        seedDownload: "{brand} 下载",
+        seedAlt: "{brand} 替代",
+        rationale:
+          "从页面 Title/H1/H2 提取的候选词（站点：{host}）。未连接 GSC，排名与趋势为启发式占位，仅用于机会排期；接入 Search Console 后会替换为真实查询数据。",
+        actionTitle: "优化 Title/H1",
+        actionFaq: "补充 FAQ / 定义段",
+        actionLinks: "加强相关内链",
+        actionIntent: "检查搜索意图覆盖",
+        warnAiEstimate:
+          "尚未连接 Google Search Console，排名/趋势为 AI 估计，接入 GSC 后替换为真实查询数据。",
+        warnLocation:
+          "Gemini 当前出口地区不可用（User location is not supported）。请让 Clash 使用美/日/新等可用节点，并确认系统代理/TUN 已开启；或改用可用的 LLM_BASE_URL 中转。已降级为页面启发式。连接 GSC 后可显示真实排名机会。",
+        warnAiFail:
+          "AI 生成失败（{message}），已降级为页面启发式候选。连接 GSC 后可显示真实排名机会。",
+        warnNoLlm:
+          "未配置 LLM_API_KEY，且尚未连接 GSC。当前为页面标题/标题层级启发式候选。",
+      },
+      content: {
+        guideTitle: "{brand} 使用指南 / Getting Started",
+        guideKeyword: "{brand} 教程",
+        guideRationale:
+          "首页有产品信号，但缺少面向「如何上手」的独立指南页。答案型长文可同时服务 SEO 与 GEO 引用。",
+        guideGeo: "首段直接答案 + 分步清单 + FAQPage",
+        vsTitle: "{brand} vs 常见替代方案",
+        vsKeyword: "{brand} 替代",
+        vsRationale:
+          "对比意图搜索常见且转化高；当前页面未覆盖清晰对比结构。",
+        vsGeo: "用表格对比关键维度，便于 AI 摘录",
+        whatTitle: "什么是 {brand}？功能与适用场景",
+        whatKeyword: "{brand} 是什么",
+        whatRationale:
+          "定义型查询适合首段直接答案结构；有利于搜索摘要与生成式引擎引用。",
+        whatGeo: "定义段 2–4 句 + Entity/SoftwareApplication Schema",
+        topicTitle: "关于「{topic}」的完整说明",
+        topicRationale:
+          "从首页 H2/导航提取主题「{topic}」，未见独立内容页覆盖。建议写成答案型专页。",
+        topicGeoQuestion: "问题型：首段直接答 + FAQ 3+",
+        topicGeoTheme: "主题型：定义 + 场景 + 步骤",
+        gscTitle: "为「{query}」创建专页",
+        gscRationale:
+          "GSC：查询「{query}」展示 {impressions}、点击 {clicks}，但落地偏首页/浅路径。适合拆成独立内容页承接意图。",
+        gscGeo: "专页首段直接回答查询意图 + FAQ",
+        warnAi:
+          "尚未用 GSC 校验内容缺口。当前为 AI 基于首页主题推断；接入并同步 GSC 后，会优先展示「有展现、无专页」的真实缺口。",
+        warnLocation:
+          "Gemini 地区不可用，已用规则模板生成内容缺口。可切换海外代理后重试。",
+        warnAiFail: "AI 生成失败（{message}），已降级为启发式内容缺口。",
+        warnNoLlm:
+          "未配置 LLM_API_KEY。当前为首页标题层级/导航启发式内容缺口；配置 LLM 或连接 GSC 后更准。",
+      },
+    },
   },
   en: {
     meta: {
@@ -570,6 +683,122 @@ export const messages = {
       syncing: "Syncing…",
       syncGa4: "Sync GA4",
       lastSynced: "Last synced {time}",
+    },
+    server: {
+      llm: {
+        languageRule:
+          "Write ALL user-facing strings (titles, rationales, actions, warnings, keyword phrases) in English.",
+      },
+      api: {
+        missingUrl: "Missing url",
+        missingUrlParam: "Missing url parameter",
+        fetchFailedHttp: "Failed to fetch site (HTTP {status})",
+        keywordsFailed: "Keyword analysis failed",
+        contentFailed: "Content gap analysis failed",
+        adviceFailed: "Failed to generate growth advice",
+      },
+      ga4Notes: {
+        synced: "GA4 synced — last 7 days of page-level data",
+        authorized:
+          "Analytics authorized — select a property on the Dashboard and sync",
+        connect:
+          "Connect Google (Analytics read-only) to sync GA4",
+      },
+      gscOpp: {
+        rationaleWin:
+          "GSC last 28 days: {impressions} impressions, {clicks} clicks, avg position {position}, CTR {ctr}%. In the 8–20 win zone — prioritize the landing page.",
+        rationaleWatch:
+          "GSC last 28 days: {impressions} impressions, {clicks} clicks, avg position {position}, CTR {ctr}%. Solid visibility — keep watching or make light optimizations.",
+        actionTitle: "Optimize Title/H1",
+        actionFaq: "Add FAQ / definition block",
+        actionLinks: "Strengthen related internal links",
+        actionIntent: "Check search-intent coverage",
+      },
+      advice: {
+        greeting: "Today’s growth advice",
+        headlineOpen: "Found {count} issues worth handling today",
+        kwGrabTitle: "Keyword “{query}” is ready to win",
+        kwOppTitle: "Keyword opportunity “{query}”",
+        viewKeywords: "View keywords",
+        viewContent: "View content opportunities",
+        viewGeo: "View GEO",
+        viewAudit: "View site audit",
+        generateGeoPlan: "Generate GEO plan",
+        contentActionBrief: "Generate content brief",
+        contentActionOutline: "Plan outline & FAQ",
+        crawlFailedHttp: "Page fetch failed HTTP {status}",
+        crawlFailed: "Page fetch failed",
+        kwFailed: "Keyword analysis failed",
+        kwFailedPrefixed: "Keywords: {message}",
+        contentFailed: "Content gap analysis failed",
+        contentFailedPrefixed: "Content: {message}",
+        geoFailed: "GEO analysis failed",
+        geoFailedPrefixed: "GEO: {message}",
+        ga4Failed: "GA4 read failed",
+        ga4FailedPrefixed: "GA4: {message}",
+        pagespeedFailed: "PageSpeed failed",
+        pagespeedFailedPrefixed: "PageSpeed: {message}",
+        ga4TopTitle: "Top page “{path}” needs conversion / GEO hardening",
+        ga4TopSummary:
+          "Last 7 days ~{sessions} sessions / {users} users. Prioritize answer block, FAQ, CTA, and internal links.",
+        ga4ActionAnswer: "Check above-the-fold answer + CTA",
+        ga4ActionFaq: "Add FAQ / Schema",
+        ga4ActionLinks: "Strengthen internal links from related pages",
+        psiFixAction: "Open site audit and fix items one by one",
+        geoScoreTitle: "GEO Readiness {score} ({kind})",
+      },
+      keywords: {
+        seedDownload: "{brand} download",
+        seedAlt: "{brand} alternatives",
+        rationale:
+          "Candidates extracted from Title/H1/H2 (site: {host}). GSC is not connected — rank/trend are heuristic placeholders for prioritization; Search Console will replace them with real queries.",
+        actionTitle: "Optimize Title/H1",
+        actionFaq: "Add FAQ / definition block",
+        actionLinks: "Strengthen related internal links",
+        actionIntent: "Check search-intent coverage",
+        warnAiEstimate:
+          "Google Search Console is not connected — ranks/trends are AI estimates. Connect GSC to replace them with real query data.",
+        warnLocation:
+          "Gemini is unavailable for the current exit region (User location is not supported). Switch Clash to a US/JP/SG node with system proxy/TUN on, or use a working LLM_BASE_URL relay. Fell back to page heuristics. Connect GSC for real ranking opportunities.",
+        warnAiFail:
+          "AI generation failed ({message}); fell back to page heuristics. Connect GSC for real ranking opportunities.",
+        warnNoLlm:
+          "LLM_API_KEY is not set and GSC is not connected. Showing Title/heading heuristics.",
+      },
+      content: {
+        guideTitle: "{brand} getting started guide",
+        guideKeyword: "{brand} tutorial",
+        guideRationale:
+          "The homepage shows product signals but lacks a dedicated getting-started guide. Answer-style longform serves both SEO and GEO citations.",
+        guideGeo: "Direct answer up front + step checklist + FAQPage",
+        vsTitle: "{brand} vs common alternatives",
+        vsKeyword: "{brand} alternatives",
+        vsRationale:
+          "Comparison intent is common and high-converting; the site lacks a clear comparison structure.",
+        vsGeo: "Compare key dimensions in a table for easy AI extraction",
+        whatTitle: "What is {brand}? Features and use cases",
+        whatKeyword: "what is {brand}",
+        whatRationale:
+          "Definition queries fit a direct-answer opening; good for search snippets and generative citations.",
+        whatGeo: "2–4 sentence definition + Entity/SoftwareApplication Schema",
+        topicTitle: "Complete guide to “{topic}”",
+        topicRationale:
+          "Topic “{topic}” appears in homepage H2/nav but has no dedicated content page. Write an answer-style page.",
+        topicGeoQuestion: "Question-style: answer first + FAQ 3+",
+        topicGeoTheme: "Theme-style: definition + scenarios + steps",
+        gscTitle: "Create a dedicated page for “{query}”",
+        gscRationale:
+          "GSC: query “{query}” has {impressions} impressions and {clicks} clicks but lands on a thin/home path. Split into a dedicated content page.",
+        gscGeo: "Answer the query intent in the first paragraph + FAQ",
+        warnAi:
+          "Content gaps are AI-inferred from homepage themes and not yet validated with GSC. After syncing GSC, we’ll prioritize real “impressions without a dedicated page” gaps.",
+        warnLocation:
+          "Gemini is unavailable in this region; used rule templates for content gaps. Switch to an overseas proxy and retry.",
+        warnAiFail:
+          "AI generation failed ({message}); fell back to heuristic content gaps.",
+        warnNoLlm:
+          "LLM_API_KEY is not set. Showing homepage heading/nav heuristic gaps; configure LLM or connect GSC for better accuracy.",
+      },
     },
   },
 } as const;

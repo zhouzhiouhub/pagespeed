@@ -44,8 +44,12 @@ export type ContentBrief = {
   warning: string | null;
 };
 
-const CACHE_KEY = "webagent:content-cache:v1";
+const CACHE_KEY = "webagent:content-cache:v2";
 const memory = new Map<string, { savedAt: number; data: ContentGapsResponse }>();
+
+function cacheId(url: string, locale = "zh") {
+  return `${locale}::${url}`;
+}
 
 function readStore(): Record<
   string,
@@ -75,21 +79,30 @@ function writeStore(
   }
 }
 
-export function getCachedContent(url: string): ContentGapsResponse | null {
-  const mem = memory.get(url);
+export function getCachedContent(
+  url: string,
+  locale = "zh",
+): ContentGapsResponse | null {
+  const id = cacheId(url, locale);
+  const mem = memory.get(id);
   if (mem) return mem.data;
   const store = readStore();
-  const entry = store[url];
+  const entry = store[id];
   if (!entry) return null;
-  memory.set(url, entry);
+  memory.set(id, entry);
   return entry.data;
 }
 
-export function setCachedContent(url: string, data: ContentGapsResponse) {
+export function setCachedContent(
+  url: string,
+  data: ContentGapsResponse,
+  locale = "zh",
+) {
+  const id = cacheId(url, locale);
   const entry = { savedAt: Date.now(), data };
-  memory.set(url, entry);
+  memory.set(id, entry);
   const store = readStore();
-  store[url] = entry;
+  store[id] = entry;
   const keys = Object.keys(store).sort(
     (a, b) => (store[b]?.savedAt ?? 0) - (store[a]?.savedAt ?? 0),
   );

@@ -5,6 +5,7 @@ import { fetchText } from "@/server/http/fetch";
 import { extractPageSignals } from "@/server/keywords/extract";
 import { buildKeywordOpportunities } from "@/server/keywords/opportunities";
 import { readGscStore } from "@/server/gsc/store";
+import { translate } from "@/lib/i18n/messages";
 
 applyProxyDispatcher();
 
@@ -12,15 +13,22 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 export async function GET(request: Request) {
+  const locale = localeFromRequest(request);
   const { searchParams } = new URL(request.url);
   const rawUrl = searchParams.get("url");
   if (!rawUrl) {
-    return NextResponse.json({ error: "缺少 url 参数" }, { status: 400 });
+    return NextResponse.json(
+      { error: translate(locale, "server.api.missingUrlParam") },
+      { status: 400 },
+    );
   }
 
   const parsed = parseSiteUrl(rawUrl);
   if (!parsed.ok) {
-    return NextResponse.json({ error: localizedUrlError(parsed.code, localeFromRequest(request)) }, { status: 400 });
+    return NextResponse.json(
+      { error: localizedUrlError(parsed.code, locale) },
+      { status: 400 },
+    );
   }
 
   try {
@@ -50,13 +58,21 @@ export async function GET(request: Request) {
     const page = await fetchText(parsed.url, { timeoutMs: 25_000 });
     if (!page.ok) {
       return NextResponse.json(
-        { error: `抓取站点失败（HTTP ${page.status}）` },
+        {
+          error: translate(locale, "server.api.fetchFailedHttp", {
+            status: page.status,
+          }),
+        },
         { status: 502 },
       );
     }
 
     const signals = extractPageSignals(page.finalUrl || parsed.url, page.text);
-    const result = await buildKeywordOpportunities(parsed.url, signals);
+    const result = await buildKeywordOpportunities(
+      parsed.url,
+      signals,
+      locale,
+    );
 
     return NextResponse.json({
       url: parsed.url,
@@ -65,6 +81,7 @@ export async function GET(request: Request) {
       source: result.source,
       model: result.model,
       warning: result.warning,
+      locale,
       signals: {
         title: signals.title,
         description: signals.description,
@@ -74,7 +91,10 @@ export async function GET(request: Request) {
       items: result.items,
     });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "关键词分析失败";
+    const message =
+      err instanceof Error
+        ? err.message
+        : translate(locale, "server.api.keywordsFailed");
     return NextResponse.json({ error: message }, { status: 502 });
   }
 }

@@ -3,6 +3,8 @@
  */
 import { readGa4Store } from "@/server/ga4/store";
 import { hasScope, readGoogleTokens } from "@/server/google/tokens";
+import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/locale";
+import { translate } from "@/lib/i18n/messages";
 
 export type Ga4Status = {
   connected: boolean;
@@ -15,7 +17,10 @@ export type Ga4Status = {
   note: string;
 };
 
-export async function getGa4Status(siteUrl?: string): Promise<Ga4Status> {
+export async function getGa4Status(
+  siteUrl?: string,
+  locale: Locale = DEFAULT_LOCALE,
+): Promise<Ga4Status> {
   void siteUrl;
   const store = await readGa4Store();
   const tokens = await readGoogleTokens();
@@ -31,7 +36,7 @@ export async function getGa4Status(siteUrl?: string): Promise<Ga4Status> {
       sessions7d: store.sessions7d,
       users7d: store.users7d,
       topPages: store.topPages.slice(0, 5),
-      note: "GA4 已同步近 7 天页级数据",
+      note: translate(locale, "server.ga4Notes.synced"),
     };
   }
 
@@ -44,7 +49,7 @@ export async function getGa4Status(siteUrl?: string): Promise<Ga4Status> {
       sessions7d: null,
       users7d: null,
       topPages: [],
-      note: "已授权 Analytics，请在 Dashboard 选择 property 并同步",
+      note: translate(locale, "server.ga4Notes.authorized"),
     };
   }
 
@@ -56,12 +61,12 @@ export async function getGa4Status(siteUrl?: string): Promise<Ga4Status> {
     sessions7d: null,
     users7d: null,
     topPages: [],
-    note: "连接 Google（含 Analytics 只读）后可同步 GA4",
+    note: translate(locale, "server.ga4Notes.connect"),
   };
 }
 
-export async function fetchGa4Summary(siteUrl: string) {
-  const status = await getGa4Status(siteUrl);
+export async function fetchGa4Summary(siteUrl: string, locale: Locale = DEFAULT_LOCALE) {
+  const status = await getGa4Status(siteUrl, locale);
   return {
     ok: status.connected,
     sessions7d: status.sessions7d,

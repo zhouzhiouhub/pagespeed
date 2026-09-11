@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { PageShell } from "@/components/page-shell";
-import { useT } from "@/components/i18n-provider";
+import { useI18n, useT } from "@/components/i18n-provider";
 import {
   clearContentCache,
   getCachedContent,
@@ -277,6 +277,7 @@ function DetailPanel({
 export function ContentClient({ initialUrl }: { initialUrl: string | null }) {
   const router = useRouter();
   const t = useT();
+  const { locale } = useI18n();
   const [siteUrl, setSiteUrl] = useState<string | null>(initialUrl);
   const [data, setData] = useState<ContentGapsResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -302,7 +303,7 @@ export function ContentClient({ initialUrl }: { initialUrl: string | null }) {
     async (url: string, opts?: { force?: boolean }) => {
       const force = opts?.force ?? false;
       if (!force) {
-        const cached = getCachedContent(url);
+        const cached = getCachedContent(url, locale);
         if (cached) {
           setData(cached);
           setFromCache(true);
@@ -329,7 +330,7 @@ export function ContentClient({ initialUrl }: { initialUrl: string | null }) {
           setError(json.error ?? t("content.analyzeFailed"));
           return;
         }
-        setCachedContent(url, json);
+        setCachedContent(url, json, locale);
         setData(json);
         setFromCache(false);
         setSelected(json.items[0]?.id ?? null);
@@ -339,7 +340,7 @@ export function ContentClient({ initialUrl }: { initialUrl: string | null }) {
         setLoading(false);
       }
     },
-    [t],
+    [t, locale],
   );
 
   useEffect(() => {

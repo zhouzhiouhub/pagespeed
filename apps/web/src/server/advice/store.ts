@@ -26,6 +26,8 @@ export type AdviceRunRecord = {
   siteUrl: string;
   runId: string;
   generatedAt: string;
+  /** UI locale used when this run was generated */
+  locale?: string;
   greeting: string;
   headline: string;
   sources: string[];
