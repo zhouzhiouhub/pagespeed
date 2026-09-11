@@ -27,6 +27,23 @@ function scoreColor(score: number) {
   return "text-[#d93025]";
 }
 
+function missingLabel(code: string) {
+  const map: Record<string, string> = {
+    definition_block: "定义段",
+    faq: "FAQ",
+    faq_schema: "FAQ Schema",
+    organization_schema: "Organization",
+    product_schema: "Product Schema",
+    author: "作者",
+    dateModified: "更新日期",
+    llms_txt: "llms.txt",
+    ai_bot_access: "AI bot 访问",
+    comparison_table: "对比表",
+    key_points: "要点列表",
+  };
+  return map[code] ?? code;
+}
+
 function BreakdownBars({ breakdown }: { breakdown: GeoBreakdown }) {
   const rows: Array<{ key: keyof GeoBreakdown; label: string }> = [
     { key: "answerability", label: "Answerability" },
@@ -36,7 +53,7 @@ function BreakdownBars({ breakdown }: { breakdown: GeoBreakdown }) {
     { key: "entity", label: "Entity" },
   ];
   return (
-    <div className="space-y-3">
+    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
       {rows.map((row) => {
         const value = breakdown[row.key];
         return (
@@ -58,7 +75,21 @@ function BreakdownBars({ breakdown }: { breakdown: GeoBreakdown }) {
   );
 }
 
-function OpportunitiesTable({
+function SignalChip({ ok, label }: { ok: boolean; label: string }) {
+  return (
+    <span
+      className={
+        ok
+          ? "inline-flex items-center rounded-md bg-[#e6f4ea] px-2.5 py-1 text-xs font-medium text-[#137333]"
+          : "inline-flex items-center rounded-md bg-[#fce8e6] px-2.5 py-1 text-xs font-medium text-[#c5221f]"
+      }
+    >
+      {ok ? "✓" : "×"} {label}
+    </span>
+  );
+}
+
+function OpportunityList({
   items,
   selected,
   onSelect,
@@ -68,55 +99,51 @@ function OpportunitiesTable({
   onSelect: (id: string) => void;
 }) {
   return (
-    <div className="overflow-x-auto rounded-xl border border-[var(--border)] bg-[var(--surface)]">
-      <table className="min-w-full text-left text-sm">
-        <thead className="border-b border-[var(--border)] bg-[var(--surface-2)]/60 text-[var(--muted)]">
-          <tr>
-            <th className="px-4 py-3 font-medium">机会</th>
-            <th className="px-4 py-3 font-medium">页面</th>
-            <th className="px-4 py-3 font-medium">缺失</th>
-            <th className="px-4 py-3 font-medium">价值</th>
-            <th className="px-4 py-3 font-medium">操作</th>
-          </tr>
-        </thead>
-        <tbody>
-          {items.map((item) => {
-            const active = selected === item.id;
-            return (
-              <tr
-                key={item.id}
-                className={
-                  active
-                    ? "border-t border-[var(--border)] bg-[var(--accent-soft)]/50"
-                    : "border-t border-[var(--border)] hover:bg-[var(--surface-2)]/40"
-                }
+    <div className="space-y-3">
+      {items.map((item) => {
+        const active = selected === item.id;
+        return (
+          <button
+            key={item.id}
+            type="button"
+            onClick={() => onSelect(item.id)}
+            className={
+              active
+                ? "w-full rounded-xl border border-[var(--brand-blue)] bg-[var(--accent-soft)]/60 px-4 py-4 text-left"
+                : "w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-4 text-left hover:bg-[var(--surface-2)]/50"
+            }
+          >
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-[var(--fg)]">{item.title}</p>
+                <p className="mt-1 text-xs text-[var(--muted)]">
+                  {item.type} · 页面{" "}
+                  <span className="font-mono text-[var(--fg)]">{item.page}</span>
+                </p>
+              </div>
+              <span
+                className="shrink-0 text-sm text-[#f4b400]"
+                title={`${item.potential}/5`}
               >
-                <td className="px-4 py-3 font-medium text-[var(--fg)]">
-                  {item.title}
-                </td>
-                <td className="px-4 py-3 font-mono text-xs text-[var(--muted)]">
-                  {item.page}
-                </td>
-                <td className="px-4 py-3 text-[var(--muted)]">
-                  {item.missing.join(", ")}
-                </td>
-                <td className="px-4 py-3 text-[#f4b400]" title={`${item.potential}/5`}>
-                  {stars(item.potential)}
-                </td>
-                <td className="px-4 py-3">
-                  <button
-                    type="button"
-                    onClick={() => onSelect(item.id)}
-                    className="text-sm font-medium text-[var(--brand-blue)] hover:underline"
-                  >
-                    查看
-                  </button>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+                {stars(item.potential)}
+              </span>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {item.missing.map((m) => (
+                <span
+                  key={m}
+                  className="rounded-md bg-[var(--surface-2)] px-2 py-0.5 text-xs text-[var(--muted)]"
+                >
+                  {missingLabel(m)}
+                </span>
+              ))}
+            </div>
+            <p className="mt-3 text-sm leading-relaxed text-[var(--muted)]">
+              {item.rationale}
+            </p>
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -162,39 +189,54 @@ function DetailPanel({
   return (
     <aside className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-5 py-5">
       <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
-        GEO 机会 · {item.type}
+        选中机会 · {item.type}
       </p>
       <h2 className="mt-2 text-lg font-semibold text-[var(--fg)]">{item.title}</h2>
-      <dl className="mt-4 space-y-3 text-sm">
-        <div>
-          <dt className="text-[var(--muted)]">页面</dt>
-          <dd className="mt-0.5 font-mono text-xs text-[var(--fg)]">{item.page}</dd>
+
+      <div className="mt-4 grid gap-4 sm:grid-cols-2">
+        <div className="text-sm">
+          <p className="text-[var(--muted)]">页面</p>
+          <p className="mt-0.5 font-mono text-[var(--fg)]">{item.page}</p>
         </div>
-        <div>
-          <dt className="text-[var(--muted)]">缺失项</dt>
-          <dd className="mt-0.5 text-[var(--fg)]">{item.missing.join(" · ")}</dd>
+        <div className="text-sm">
+          <p className="text-[var(--muted)]">价值</p>
+          <p className="mt-0.5 text-[#f4b400]">{stars(item.potential)}</p>
         </div>
-        <div>
-          <dt className="text-[var(--muted)]">为什么重要</dt>
-          <dd className="mt-0.5 leading-relaxed text-[var(--fg)]">{item.rationale}</dd>
+      </div>
+
+      <div className="mt-4 text-sm">
+        <p className="text-[var(--muted)]">缺失项</p>
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {item.missing.map((m) => (
+            <span
+              key={m}
+              className="rounded-md bg-[var(--surface-2)] px-2 py-1 text-xs text-[var(--fg)]"
+            >
+              {missingLabel(m)}
+            </span>
+          ))}
         </div>
-        <div>
-          <dt className="text-[var(--muted)]">建议动作</dt>
-          <dd className="mt-2 space-y-1.5">
-            {item.actions.map((action, i) => (
-              <p key={action} className="text-[var(--fg)]">
-                {i + 1}. {action}
-              </p>
-            ))}
-          </dd>
-        </div>
-      </dl>
+      </div>
+
+      <div className="mt-4 text-sm">
+        <p className="text-[var(--muted)]">为什么重要</p>
+        <p className="mt-1 leading-relaxed text-[var(--fg)]">{item.rationale}</p>
+      </div>
+
+      <div className="mt-4 text-sm">
+        <p className="text-[var(--muted)]">建议动作</p>
+        <ol className="mt-2 list-decimal space-y-1.5 pl-5 text-[var(--fg)]">
+          {item.actions.map((action) => (
+            <li key={action}>{action}</li>
+          ))}
+        </ol>
+      </div>
 
       <button
         type="button"
         disabled={busy}
         onClick={() => void generatePlan()}
-        className="mt-5 w-full rounded-lg bg-[var(--brand-blue)] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[var(--brand-blue-deep)] disabled:opacity-60"
+        className="mt-5 w-full rounded-lg bg-[var(--brand-blue)] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[var(--brand-blue-deep)] disabled:opacity-60 sm:w-auto"
       >
         {busy ? "正在生成方案…" : plan ? "重新生成 GEO 方案" : "生成 GEO 方案"}
       </button>
@@ -204,7 +246,7 @@ function DetailPanel({
       ) : null}
 
       {plan ? (
-        <div className="mt-5 space-y-4 border-t border-[var(--border)] pt-4 text-sm">
+        <div className="mt-5 space-y-5 border-t border-[var(--border)] pt-5 text-sm">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
               GEO 方案
@@ -216,60 +258,78 @@ function DetailPanel({
             ) : null}
           </div>
 
-          <div>
-            <p className="font-medium text-[var(--fg)]">定义段草稿</p>
-            <p className="mt-1 text-[var(--muted)]">{plan.definitionBlock}</p>
+          <div className="grid gap-5 lg:grid-cols-2">
+            <div>
+              <p className="font-medium text-[var(--fg)]">定义段草稿</p>
+              <p className="mt-1 leading-relaxed text-[var(--muted)]">
+                {plan.definitionBlock}
+              </p>
+            </div>
+            <div>
+              <p className="font-medium text-[var(--fg)]">FAQ 草稿</p>
+              <ul className="mt-2 space-y-2">
+                {plan.faq.map((f) => (
+                  <li key={f.question}>
+                    <p className="font-medium text-[var(--fg)]">Q: {f.question}</p>
+                    <p className="text-[var(--muted)]">A: {f.answer}</p>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
 
-          <div>
-            <p className="font-medium text-[var(--fg)]">FAQ 草稿</p>
-            <ul className="mt-2 space-y-2">
-              {plan.faq.map((f) => (
-                <li key={f.question}>
-                  <p className="font-medium text-[var(--fg)]">Q: {f.question}</p>
-                  <p className="text-[var(--muted)]">A: {f.answer}</p>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <div>
-            <p className="font-medium text-[var(--fg)]">Schema 片段</p>
-            <pre className="mt-1 max-h-48 overflow-auto rounded-lg bg-[var(--surface-2)] p-3 text-xs text-[var(--muted)]">
-              {plan.schemaSnippet}
-            </pre>
+          <div className="grid gap-5 lg:grid-cols-2">
+            <div>
+              <p className="font-medium text-[var(--fg)]">Schema 片段</p>
+              <pre className="mt-1 overflow-x-auto whitespace-pre-wrap break-words rounded-lg bg-[var(--surface-2)] p-3 text-xs text-[var(--muted)]">
+                {plan.schemaSnippet}
+              </pre>
+            </div>
+            {plan.llmsTxtSnippet ? (
+              <div>
+                <p className="font-medium text-[var(--fg)]">llms.txt 草稿</p>
+                <pre className="mt-1 overflow-x-auto whitespace-pre-wrap break-words rounded-lg bg-[var(--surface-2)] p-3 text-xs text-[var(--muted)]">
+                  {plan.llmsTxtSnippet}
+                </pre>
+              </div>
+            ) : (
+              <div>
+                <p className="font-medium text-[var(--fg)]">验收清单</p>
+                <ul className="mt-2 list-disc space-y-1 pl-5 text-[var(--muted)]">
+                  {plan.checklist.map((t) => (
+                    <li key={t}>{t}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
 
           {plan.llmsTxtSnippet ? (
             <div>
-              <p className="font-medium text-[var(--fg)]">llms.txt 草稿</p>
-              <pre className="mt-1 max-h-40 overflow-auto rounded-lg bg-[var(--surface-2)] p-3 text-xs text-[var(--muted)]">
-                {plan.llmsTxtSnippet}
-              </pre>
+              <p className="font-medium text-[var(--fg)]">验收清单</p>
+              <ul className="mt-2 list-disc space-y-1 pl-5 text-[var(--muted)]">
+                {plan.checklist.map((t) => (
+                  <li key={t}>{t}</li>
+                ))}
+              </ul>
             </div>
           ) : null}
 
           <div>
             <p className="font-medium text-[var(--fg)]">执行步骤</p>
-            <ol className="mt-2 space-y-2">
+            <ol className="mt-2 grid gap-3 sm:grid-cols-2">
               {plan.steps.map((s) => (
-                <li key={`${s.order}-${s.title}`}>
+                <li
+                  key={`${s.order}-${s.title}`}
+                  className="rounded-lg border border-[var(--border)] px-3 py-3"
+                >
                   <p className="font-medium text-[var(--fg)]">
                     {s.order}. {s.title}
                   </p>
-                  <p className="text-[var(--muted)]">{s.content}</p>
+                  <p className="mt-1 text-[var(--muted)]">{s.content}</p>
                 </li>
               ))}
             </ol>
-          </div>
-
-          <div>
-            <p className="font-medium text-[var(--fg)]">验收清单</p>
-            <ul className="mt-1 list-disc space-y-1 pl-5 text-[var(--muted)]">
-              {plan.checklist.map((t) => (
-                <li key={t}>{t}</li>
-              ))}
-            </ul>
           </div>
         </div>
       ) : null}
@@ -374,6 +434,9 @@ export function GeoClient({ initialUrl }: { initialUrl: string | null }) {
                 <p className="mt-1 text-xs text-[var(--muted)]">
                   Readiness 规则评分
                   {fromCache ? " · 缓存" : ""}
+                  {data.fetchedUrl && data.fetchedUrl !== data.url
+                    ? ` · 抓取 ${data.fetchedUrl}`
+                    : ""}
                 </p>
               ) : null}
             </div>
@@ -428,19 +491,28 @@ export function GeoClient({ initialUrl }: { initialUrl: string | null }) {
           ) : null}
 
           {data ? (
-            <div className="grid gap-5 lg:grid-cols-[minmax(16rem,0.9fr)_minmax(0,1.4fr)]">
-              <div className="space-y-5">
+            <div className="space-y-5">
+              {/* Overview: score + breakdown + access — all visible */}
+              <div className="grid gap-5 lg:grid-cols-[12rem_minmax(0,1.2fr)_minmax(0,1fr)]">
                 <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-5 py-5">
                   <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
                     GEO 总分
                   </p>
-                  <p className={`mt-2 text-5xl font-semibold ${scoreColor(data.score)}`}>
+                  <p
+                    className={`mt-2 text-5xl font-semibold ${scoreColor(data.score)}`}
+                  >
                     {data.score}
                   </p>
                   <p className="mt-2 text-sm text-[var(--muted)]">
                     Readiness（非引用实测）
                   </p>
-                  <div className="mt-5">
+                </div>
+
+                <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-5 py-5">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
+                    分项得分
+                  </p>
+                  <div className="mt-4">
                     <BreakdownBars breakdown={data.breakdown} />
                   </div>
                 </div>
@@ -455,8 +527,12 @@ export function GeoClient({ initialUrl }: { initialUrl: string | null }) {
                       <dd className="mt-0.5 font-medium text-[var(--fg)]">
                         {data.access.aiBotPolicy}
                       </dd>
-                      <dd className="mt-1 text-[var(--muted)]">
+                      <dd className="mt-1 break-words text-[var(--muted)]">
                         {data.access.aiBotSummary}
+                      </dd>
+                      <dd className="mt-1 break-all font-mono text-xs text-[var(--muted)]">
+                        {data.access.robotsUrl}
+                        {data.access.robotsOk ? "" : "（读取失败）"}
                       </dd>
                     </div>
                     <div>
@@ -464,8 +540,11 @@ export function GeoClient({ initialUrl }: { initialUrl: string | null }) {
                       <dd className="mt-0.5 font-medium text-[var(--fg)]">
                         {data.access.llmsTxtPresent ? "已发现" : "未发现"}
                       </dd>
+                      <dd className="mt-1 break-all font-mono text-xs text-[var(--muted)]">
+                        {data.access.llmsTxtUrl}
+                      </dd>
                       {data.access.llmsTxtPreview ? (
-                        <dd className="mt-1 whitespace-pre-wrap text-xs text-[var(--muted)]">
+                        <dd className="mt-2 whitespace-pre-wrap break-words rounded-lg bg-[var(--surface-2)] p-2 text-xs text-[var(--muted)]">
                           {data.access.llmsTxtPreview}
                         </dd>
                       ) : null}
@@ -474,10 +553,70 @@ export function GeoClient({ initialUrl }: { initialUrl: string | null }) {
                 </div>
               </div>
 
-              <div className="space-y-5">
+              {/* Page signals — previously hidden */}
+              <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-5 py-5">
+                <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
+                  当前页信号
+                </p>
+                {(data.page.title || data.page.h1.length > 0) && (
+                  <div className="mt-3 space-y-1 text-sm">
+                    {data.page.title ? (
+                      <p className="text-[var(--fg)]">
+                        <span className="text-[var(--muted)]">Title：</span>
+                        {data.page.title}
+                      </p>
+                    ) : null}
+                    {data.page.h1.length > 0 ? (
+                      <p className="text-[var(--fg)]">
+                        <span className="text-[var(--muted)]">H1：</span>
+                        {data.page.h1.join(" / ")}
+                      </p>
+                    ) : null}
+                    {data.page.description ? (
+                      <p className="text-[var(--muted)]">
+                        <span className="text-[var(--muted)]">Description：</span>
+                        {data.page.description}
+                      </p>
+                    ) : null}
+                  </div>
+                )}
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <SignalChip
+                    ok={data.page.flags.hasDefinitionCue}
+                    label="定义线索"
+                  />
+                  <SignalChip ok={data.page.flags.hasFaqHeading} label="FAQ 标题" />
+                  <SignalChip ok={data.page.flags.hasFaqSchema} label="FAQ Schema" />
+                  <SignalChip ok={data.page.flags.hasOrgSchema} label="Organization" />
+                  <SignalChip
+                    ok={data.page.flags.hasProductSchema}
+                    label="Product/App"
+                  />
+                  <SignalChip ok={data.page.flags.hasAuthor} label="作者" />
+                  <SignalChip
+                    ok={data.page.flags.hasDateModified}
+                    label="更新日期"
+                  />
+                  <SignalChip ok={data.page.flags.hasTable} label="表格" />
+                </div>
+              </div>
+
+              {/* Opportunities + detail: stack so nothing is clipped */}
+              <div>
+                <div className="mb-3 flex items-end justify-between gap-3">
+                  <div>
+                    <h3 className="text-base font-semibold text-[var(--fg)]">
+                      GEO 机会
+                    </h3>
+                    <p className="mt-0.5 text-sm text-[var(--muted)]">
+                      共 {data.items.length} 项 · 点击查看详情并生成方案
+                    </p>
+                  </div>
+                </div>
+
                 {data.items.length > 0 ? (
-                  <div className="grid gap-5 xl:grid-cols-[minmax(0,1.2fr)_minmax(16rem,0.8fr)]">
-                    <OpportunitiesTable
+                  <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(22rem,0.95fr)]">
+                    <OpportunityList
                       items={data.items}
                       selected={selectedItem?.id ?? null}
                       onSelect={setSelected}
