@@ -16,9 +16,9 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
       - run: npm ci
-      - run: npm run lint
-      - run: npm test
-      - run: npm run build
+      - run: npm run lint -w web
+      - run: npm test -w web
+      - run: npm run build -w web
         env:
           DATABASE_DISABLED: "true"
           NEXTAUTH_SECRET: ci-placeholder-secret

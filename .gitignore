@@ -15,7 +15,9 @@ Thumbs.db
 node_modules/
 dist/
 .next/
+.open-next/
 .turbo/
+.wrangler/
 coverage/
 
 # Local integration data

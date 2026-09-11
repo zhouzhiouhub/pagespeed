@@ -9,10 +9,11 @@
   ],
   "scripts": {
     "dev": "npm run dev -w web",
-    "build": "npm run build -w web",
+    "build": "npm run cf:build -w web",
     "start": "npm run start -w web",
     "lint": "npm run lint -w web",
     "test": "npm test -w web",
+    "deploy": "npm run deploy -w web",
     "db:generate": "npm run db:generate -w web",
     "db:migrate": "npm run db:migrate -w web",
     "db:studio": "npm run db:studio -w web"
@@ -20,5 +21,10 @@
   "engines": {
     "node": ">=20"
   },
-  "packageManager": "npm@10.9.2"
+  "packageManager": "npm@10.9.2",
+  "allowScripts": {
+    "workerd@1.20260910.1": true,
+    "esbuild": true,
+    "unrs-resolver": true
+  }
 }
