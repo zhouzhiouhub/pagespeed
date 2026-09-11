@@ -20,6 +20,7 @@ import { translate, type MessageKey } from "@/lib/i18n/messages";
 
 type I18nContextValue = {
   locale: Locale;
+  ready: boolean;
   setLocale: (locale: Locale) => void;
   t: (key: MessageKey, params?: Record<string, string | number>) => string;
 };
@@ -78,8 +79,8 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
   );
 
   const value = useMemo(
-    () => ({ locale, setLocale, t }),
-    [locale, setLocale, t],
+    () => ({ locale, ready, setLocale, t }),
+    [locale, ready, setLocale, t],
   );
 
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;

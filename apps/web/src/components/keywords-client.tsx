@@ -329,7 +329,7 @@ function DetailPanel({
 export function KeywordsClient({ initialUrl }: { initialUrl: string | null }) {
   const router = useRouter();
   const t = useT();
-  const { locale } = useI18n();
+  const { locale, ready } = useI18n();
   const [siteUrl, setSiteUrl] = useState<string | null>(initialUrl);
   const [data, setData] = useState<KeywordsResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -396,9 +396,9 @@ export function KeywordsClient({ initialUrl }: { initialUrl: string | null }) {
   );
 
   useEffect(() => {
-    if (!siteUrl) return;
-    void load(siteUrl);
-  }, [siteUrl, load]);
+    if (!ready || !siteUrl) return;
+    void load(siteUrl, { force: true });
+  }, [ready, siteUrl, load]);
 
   const selectedItem =
     data?.items.find((item) => item.query === selected) ?? data?.items[0] ?? null;

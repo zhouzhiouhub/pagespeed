@@ -195,7 +195,7 @@ function AdviceCard({
 export function AdviceClient({ initialUrl }: { initialUrl: string | null }) {
   const router = useRouter();
   const t = useT();
-  const { locale } = useI18n();
+  const { locale, ready } = useI18n();
   const [siteUrl, setSiteUrl] = useState<string | null>(initialUrl);
   const [data, setData] = useState<AdviceResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -264,9 +264,10 @@ export function AdviceClient({ initialUrl }: { initialUrl: string | null }) {
   );
 
   useEffect(() => {
-    if (!siteUrl) return;
-    void load(siteUrl);
-  }, [siteUrl, load]);
+    if (!ready || !siteUrl) return;
+    // Language switch must bypass stale zh/en client+server caches.
+    void load(siteUrl, { force: true });
+  }, [ready, siteUrl, load]);
 
   async function patchState(itemId: string, userState: AdviceUserState) {
     if (!siteUrl) return;

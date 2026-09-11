@@ -448,8 +448,7 @@ export async function composeDailyAdvice(
 
   if (!force && prev) {
     const ageMs = Date.now() - new Date(prev.generatedAt).getTime();
-    const localeMatch = !prev.locale || prev.locale === locale;
-    if (ageMs < 30 * 60 * 1000 && localeMatch) {
+    if (ageMs < 30 * 60 * 1000 && prev.locale === locale) {
       return prev;
     }
   }

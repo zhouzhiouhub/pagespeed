@@ -33,7 +33,8 @@ export async function GET(request: Request) {
   try {
     if (!force) {
       const cached = await readAdviceRun(parsed.url);
-      if (cached && (!cached.locale || cached.locale === locale)) {
+      // Old runs without locale must not be reused across languages.
+      if (cached?.locale === locale) {
         return NextResponse.json(cached);
       }
     }

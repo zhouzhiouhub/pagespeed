@@ -18,6 +18,7 @@ export type AdviceResponse = {
   siteUrl: string;
   runId: string;
   generatedAt: string;
+  locale?: string;
   greeting: string;
   headline: string;
   sources: string[];
@@ -26,7 +27,7 @@ export type AdviceResponse = {
   items: AdviceItem[];
 };
 
-const CACHE_KEY = "webagent:advice-cache:v2";
+const CACHE_KEY = "webagent:advice-cache:v3";
 const memory = new Map<string, { savedAt: number; data: AdviceResponse }>();
 
 function cacheId(url: string, locale = "zh") {
@@ -61,10 +62,14 @@ export function getCachedAdvice(
 ): AdviceResponse | null {
   const id = cacheId(url, locale);
   const mem = memory.get(id);
-  if (mem) return mem.data;
+  if (mem) {
+    if (mem.data.locale && mem.data.locale !== locale) return null;
+    return mem.data;
+  }
   const store = readStore();
   const entry = store[id];
   if (!entry) return null;
+  if (entry.data.locale && entry.data.locale !== locale) return null;
   memory.set(id, entry);
   return entry.data;
 }

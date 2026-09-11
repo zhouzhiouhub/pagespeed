@@ -57,7 +57,7 @@ type AnalyticsNarrative = {
 export function DashboardClient({ initialUrl }: { initialUrl: string | null }) {
   const router = useRouter();
   const t = useT();
-  const { locale } = useI18n();
+  const { locale, ready } = useI18n();
   const [siteUrl, setSiteUrl] = useState<string | null>(initialUrl);
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(false);
@@ -124,9 +124,9 @@ export function DashboardClient({ initialUrl }: { initialUrl: string | null }) {
   );
 
   useEffect(() => {
-    if (!siteUrl) return;
+    if (!ready || !siteUrl) return;
     void load(siteUrl);
-  }, [siteUrl, load]);
+  }, [ready, siteUrl, load]);
 
   async function runCrawl() {
     if (!siteUrl) return;
