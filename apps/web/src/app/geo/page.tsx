@@ -1,10 +1,12 @@
-import { PageShell } from "@/components/page-shell";
+import { GeoClient } from "@/components/geo-client";
+import { parseSiteUrl } from "@/lib/url";
 
-export default function GeoPage() {
-  return (
-    <PageShell
-      title="GEO"
-      description="生成式引擎可见性：答案块、FAQ/Schema、实体、AI bot / llms.txt 等 Readiness 信号。"
-    />
-  );
+export default async function GeoPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ url?: string }>;
+}) {
+  const params = await searchParams;
+  const parsed = params.url ? parseSiteUrl(params.url) : null;
+  return <GeoClient initialUrl={parsed?.ok ? parsed.url : null} />;
 }
