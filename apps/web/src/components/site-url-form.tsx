@@ -49,7 +49,13 @@ export function SiteUrlForm({
   }
 
   return (
-    <form onSubmit={onSubmit} className="w-full" noValidate>
+    <form
+      action="/audit"
+      method="get"
+      onSubmit={onSubmit}
+      className="w-full"
+      noValidate
+    >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-stretch">
         <label className="sr-only" htmlFor="site-url">
           网站地址
@@ -87,7 +93,7 @@ export function SiteUrlForm({
         </p>
       ) : (
         <p className="mt-3 text-sm text-[var(--muted)]">
-          将启动 SEO + GEO Readiness 扫描。GSC / GA4 可稍后连接。
+          将调用 PageSpeed Insights（约 30–60 秒）。GSC / GA4 可稍后连接。
         </p>
       )}
     </form>

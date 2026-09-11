@@ -1,6 +1,20 @@
+import { redirect } from "next/navigation";
 import { SiteUrlForm } from "@/components/site-url-form";
+import { parseSiteUrl } from "@/lib/url";
 
-export default function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ url?: string }>;
+}) {
+  const params = await searchParams;
+  if (params.url) {
+    const parsed = parseSiteUrl(params.url);
+    if (parsed.ok) {
+      redirect(`/audit?url=${encodeURIComponent(parsed.url)}`);
+    }
+  }
+
   return (
     <div className="relative flex flex-1 flex-col overflow-hidden">
       <div

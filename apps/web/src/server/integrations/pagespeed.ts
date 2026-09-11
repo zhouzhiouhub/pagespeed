@@ -1,3 +1,5 @@
+import { Agent, ProxyAgent, fetch as undiciFetch } from "undici";
+
 export type PsiStrategy = "mobile" | "desktop";
 
 export type PsiCategoryScore = {
@@ -60,12 +62,62 @@ const METRIC_IDS = [
   "interactive",
 ] as const;
 
+const SEO_AUDIT_IDS = new Set([
+  "meta-description",
+  "document-title",
+  "crawlable-anchors",
+  "is-crawlable",
+  "robots-txt",
+  "hreflang",
+  "canonical",
+  "link-text",
+  "image-alt",
+  "http-status-code",
+  "viewport",
+]);
+
 function requireApiKey(): string {
   const key = process.env.PAGESPEED_API_KEY?.trim();
   if (!key) {
     throw new Error("PAGESPEED_API_KEY is not configured");
   }
   return key;
+}
+
+function resolveProxyUrl(): string | null {
+  const candidates = [
+    process.env.PAGESPEED_HTTP_PROXY,
+    process.env.HTTPS_PROXY,
+    process.env.HTTP_PROXY,
+    process.env.ALL_PROXY,
+  ];
+  for (const value of candidates) {
+    const trimmed = value?.trim();
+    if (trimmed) return trimmed;
+  }
+  return null;
+}
+
+function createDispatcher() {
+  const proxy = resolveProxyUrl();
+  if (proxy) {
+    return new ProxyAgent(proxy);
+  }
+  return new Agent({
+    connectTimeout: 60_000,
+    headersTimeout: 120_000,
+    bodyTimeout: 120_000,
+  });
+}
+
+function formatFetchError(err: unknown): string {
+  if (!(err instanceof Error)) return "PageSpeed 请求失败";
+  const cause = err.cause as { code?: string; message?: string } | undefined;
+  const code = cause?.code ?? (err as Error & { code?: string }).code;
+  if (code === "UND_ERR_CONNECT_TIMEOUT" || /timeout/i.test(err.message)) {
+    return "连接 Google PageSpeed API 超时。若在国内网络，请在 .env.local 设置 HTTPS_PROXY（或 PAGESPEED_HTTP_PROXY）后重启。";
+  }
+  return cause?.message || err.message || "PageSpeed 请求失败";
 }
 
 export async function runPageSpeed(
@@ -80,14 +132,24 @@ export async function runPageSpeed(
   endpoint.searchParams.set("strategy", strategy);
   endpoint.searchParams.set("locale", "zh-CN");
   endpoint.searchParams.set("key", key);
-  for (const category of ["performance", "seo", "accessibility", "best-practices"]) {
+  for (const category of [
+    "performance",
+    "seo",
+    "accessibility",
+    "best-practices",
+  ]) {
     endpoint.searchParams.append("category", category);
   }
 
-  const res = await fetch(endpoint, {
-    method: "GET",
-    cache: "no-store",
-  });
+  let res: Awaited<ReturnType<typeof undiciFetch>>;
+  try {
+    res = await undiciFetch(endpoint, {
+      method: "GET",
+      dispatcher: createDispatcher(),
+    });
+  } catch (err) {
+    throw new Error(formatFetchError(err));
+  }
 
   const data = (await res.json()) as PsiApiResponse;
 
@@ -102,13 +164,13 @@ export async function runPageSpeed(
     throw new Error("PageSpeed API returned no lighthouseResult");
   }
 
-  const scores: PsiCategoryScore[] = Object.values(lighthouse.categories ?? {}).map(
-    (c) => ({
-      id: c.id ?? "",
-      title: c.title ?? c.id ?? "",
-      score: typeof c.score === "number" ? Math.round(c.score * 100) : null,
-    }),
-  );
+  const scores: PsiCategoryScore[] = Object.values(
+    lighthouse.categories ?? {},
+  ).map((c) => ({
+    id: c.id ?? "",
+    title: c.title ?? c.id ?? "",
+    score: typeof c.score === "number" ? Math.round(c.score * 100) : null,
+  }));
 
   const audits = lighthouse.audits ?? {};
   const metrics: PsiMetric[] = METRIC_IDS.map((id) => {
@@ -121,19 +183,6 @@ export async function runPageSpeed(
     };
   });
 
-  const seoAudits = Object.values(audits)
-    .filter((a) => a.id?.startsWith("seo") || a.id === "meta-description" || a.id === "document-title" || a.id === "crawlable-anchors" || a.id === "is-crawlable" || a.id === "robots-txt" || a.id === "hreflang" || a.id === "canonical" || a.id === "structured-data")
-    .filter((a) => a.score !== null && a.score !== undefined && a.score < 1)
-    .slice(0, 12)
-    .map((a) => ({
-      id: a.id ?? "",
-      title: a.title ?? "",
-      description: a.description ?? null,
-      score: typeof a.score === "number" ? a.score : null,
-      displayValue: a.displayValue ?? null,
-    }));
-
-  // Prefer failed SEO / best-practices audits more broadly
   const failedUseful = Object.values(audits)
     .filter(
       (a) =>
@@ -144,22 +193,7 @@ export async function runPageSpeed(
     )
     .filter((a) => {
       const id = a.id ?? "";
-      return (
-        id.includes("seo") ||
-        [
-          "meta-description",
-          "document-title",
-          "crawlable-anchors",
-          "is-crawlable",
-          "robots-txt",
-          "hreflang",
-          "canonical",
-          "link-text",
-          "image-alt",
-          "http-status-code",
-          "viewport",
-        ].includes(id)
-      );
+      return id.includes("seo") || SEO_AUDIT_IDS.has(id);
     })
     .slice(0, 10)
     .map((a) => ({
@@ -176,6 +210,6 @@ export async function runPageSpeed(
     fetchTime: lighthouse.fetchTime ?? null,
     scores,
     metrics,
-    seoAudits: failedUseful.length > 0 ? failedUseful : seoAudits,
+    seoAudits: failedUseful,
   };
 }
