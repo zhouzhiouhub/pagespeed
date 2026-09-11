@@ -39,13 +39,13 @@ export function SiteUrlForm({
     writeSiteUrl(result.url);
 
     startTransition(() => {
-      router.push(`/audit?url=${encodeURIComponent(result.url)}`);
+      router.push(`/?url=${encodeURIComponent(result.url)}`);
     });
   }
 
   return (
     <form
-      action="/audit"
+      action="/"
       method="get"
       onSubmit={onSubmit}
       className="w-full"
@@ -88,7 +88,7 @@ export function SiteUrlForm({
         </p>
       ) : (
         <p className="mt-3 text-sm text-[var(--muted)]">
-          将调用 PageSpeed Insights（约 30–60 秒）。GSC / GA4 可稍后连接。
+          进入 Dashboard 后可运行多页爬取、查看分数与今日建议。GSC / GA4 可稍后连接。
         </p>
       )}
     </form>

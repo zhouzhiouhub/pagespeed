@@ -12,6 +12,10 @@ export function readSiteUrl(): string | null {
 
 export function writeSiteUrl(url: string) {
   try {
+    if (!url) {
+      localStorage.removeItem(SITE_STORAGE_KEY);
+      return;
+    }
     localStorage.setItem(SITE_STORAGE_KEY, url);
   } catch {
     // ignore

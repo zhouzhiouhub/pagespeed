@@ -37,14 +37,29 @@ function priorityMeta(priority: AdviceItem["priority"]) {
   };
 }
 
+type AdvicePlan = {
+  summary: string;
+  estimatedLift: string;
+  steps: Array<{ order: number; kind: string; title: string; content: string }>;
+  faq: Array<{ question: string; answer: string }>;
+  warning: string | null;
+  source: string;
+};
+
 function AdviceCard({
   item,
   busy,
+  planBusy,
+  plan,
   onState,
+  onPlan,
 }: {
   item: AdviceItem;
   busy: boolean;
+  planBusy: boolean;
+  plan: AdvicePlan | null;
   onState: (state: AdviceUserState) => void;
+  onPlan: () => void;
 }) {
   const meta = priorityMeta(item.priority);
   const evidenceEntries = Object.entries(item.evidence).slice(0, 6);
@@ -94,10 +109,18 @@ function AdviceCard({
       ) : null}
 
       <div className="mt-5 flex flex-wrap gap-2">
+        <button
+          type="button"
+          disabled={planBusy}
+          onClick={onPlan}
+          className="rounded-lg bg-[var(--brand-blue)] px-3 py-2 text-sm font-medium text-white hover:bg-[var(--brand-blue-deep)] disabled:opacity-50"
+        >
+          {planBusy ? "生成方案中…" : plan ? "刷新方案" : "生成 Action Plan"}
+        </button>
         {item.href ? (
           <Link
             href={item.href}
-            className="rounded-lg bg-[var(--brand-blue)] px-3 py-2 text-sm font-medium text-white hover:bg-[var(--brand-blue-deep)]"
+            className="rounded-lg border border-[var(--border)] px-3 py-2 text-sm font-medium text-[var(--fg)] hover:bg-[var(--surface-2)]"
           >
             {item.ctaLabel}
           </Link>
@@ -128,6 +151,25 @@ function AdviceCard({
         </button>
       </div>
 
+      {plan ? (
+        <div className="mt-4 rounded-lg border border-[var(--border)] bg-[var(--surface-2)] px-4 py-4 text-sm">
+          <p className="font-medium text-[var(--fg)]">{plan.summary}</p>
+          <p className="mt-1 text-xs text-[var(--muted)]">
+            预估：{plan.estimatedLift} · {plan.source}
+          </p>
+          {plan.warning ? (
+            <p className="mt-2 text-xs text-[#8a5a00]">{plan.warning}</p>
+          ) : null}
+          <ol className="mt-3 list-decimal space-y-1 pl-5 text-[var(--fg)]">
+            {plan.steps.map((s) => (
+              <li key={s.order}>
+                <span className="font-medium">{s.title}</span> — {s.content}
+              </li>
+            ))}
+          </ol>
+        </div>
+      ) : null}
+
       {item.userState !== "open" ? (
         <p className="mt-3 text-xs text-[var(--muted)]">状态：{item.userState}</p>
       ) : null}
@@ -141,6 +183,8 @@ export function AdviceClient({ initialUrl }: { initialUrl: string | null }) {
   const [data, setData] = useState<AdviceResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [patchBusy, setPatchBusy] = useState(false);
+  const [planBusyId, setPlanBusyId] = useState<string | null>(null);
+  const [plans, setPlans] = useState<Record<string, AdvicePlan>>({});
   const [error, setError] = useState<string | null>(null);
   const [fromCache, setFromCache] = useState(false);
   const [showClosed, setShowClosed] = useState(false);
@@ -224,6 +268,32 @@ export function AdviceClient({ initialUrl }: { initialUrl: string | null }) {
       setError("网络错误，请稍后重试");
     } finally {
       setPatchBusy(false);
+    }
+  }
+
+  async function loadPlan(itemId: string) {
+    if (!siteUrl) return;
+    setPlanBusyId(itemId);
+    setError(null);
+    try {
+      const res = await fetch("/api/advice/plan", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ url: siteUrl, itemId }),
+      });
+      const json = (await res.json()) as {
+        plan?: AdvicePlan;
+        error?: string;
+      };
+      if (!res.ok || !json.plan) {
+        setError(json.error ?? "生成方案失败");
+        return;
+      }
+      setPlans((prev) => ({ ...prev, [itemId]: json.plan! }));
+    } catch {
+      setError("网络错误，请稍后重试");
+    } finally {
+      setPlanBusyId(null);
     }
   }
 
@@ -360,7 +430,10 @@ export function AdviceClient({ initialUrl }: { initialUrl: string | null }) {
                           key={item.id}
                           item={item}
                           busy={patchBusy}
+                          planBusy={planBusyId === item.id}
+                          plan={plans[item.id] ?? null}
                           onState={(state) => void patchState(item.id, state)}
+                          onPlan={() => void loadPlan(item.id)}
                         />
                       ))}
                     </div>

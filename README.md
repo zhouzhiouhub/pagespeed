@@ -67,17 +67,21 @@ npm run dev
 cd apps/web && npm run dev
 ```
 
-打开 [http://localhost:3000](http://localhost:3000)。空 UI 壳路由：
+打开 [http://localhost:3000](http://localhost:3000)。主要路由：
 
 | 路径 | 页面 |
 | --- | --- |
-| `/` | Dashboard |
-| `/audit` | 网站分析 |
+| `/` | Dashboard（分数 / 接入状态 / 爬取） |
+| `/audit` | 网站分析（PageSpeed） |
 | `/keywords` | 关键词机会 |
 | `/content` | 内容机会 |
 | `/geo` | GEO |
 | `/advice` | 今日增长建议 |
 | `/api/health` | 健康检查 |
+| `/api/crawl` | 多页爬取（sitemap + 抽样） |
+| `/api/cron/run` | 任务入口（crawl / advice.daily / sync.*） |
+
+无 Postgres 时自动降级到 `apps/web/.data/` 文件存储；有 DB 时写入 sites / pages / audits / advice。
 
 ## 仓库结构
 
