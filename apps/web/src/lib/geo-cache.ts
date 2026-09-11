@@ -9,6 +9,7 @@ export type GeoBreakdown = {
 export type GeoOpportunity = {
   id: string;
   type: "geo_readiness" | "geo_asset";
+  scope: "page" | "site";
   title: string;
   page: string;
   missing: string[];
@@ -67,7 +68,7 @@ export type GeoPlan = {
   warning: string | null;
 };
 
-const CACHE_KEY = "webagent:geo-cache:v1";
+const CACHE_KEY = "webagent:geo-cache:v2";
 const memory = new Map<string, { savedAt: number; data: GeoResponse }>();
 
 function readStore(): Record<string, { savedAt: number; data: GeoResponse }> {

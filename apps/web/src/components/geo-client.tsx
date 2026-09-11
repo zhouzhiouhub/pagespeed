@@ -117,8 +117,10 @@ function OpportunityList({
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold text-[var(--fg)]">{item.title}</p>
                 <p className="mt-1 text-xs text-[var(--muted)]">
-                  {item.type} · 页面{" "}
+                  {item.scope === "site" ? "站点级" : "当前页"} ·{" "}
                   <span className="font-mono text-[var(--fg)]">{item.page}</span>
+                  {" · "}
+                  {item.type}
                 </p>
               </div>
               <span
@@ -189,13 +191,15 @@ function DetailPanel({
   return (
     <aside className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-5 py-5">
       <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
-        选中机会 · {item.type}
+        选中机会 · {item.scope === "site" ? "站点级" : "当前页"} · {item.type}
       </p>
       <h2 className="mt-2 text-lg font-semibold text-[var(--fg)]">{item.title}</h2>
 
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
         <div className="text-sm">
-          <p className="text-[var(--muted)]">页面</p>
+          <p className="text-[var(--muted)]">
+            {item.scope === "site" ? "作用范围" : "页面"}
+          </p>
           <p className="mt-0.5 font-mono text-[var(--fg)]">{item.page}</p>
         </div>
         <div className="text-sm">

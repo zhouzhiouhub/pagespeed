@@ -75,6 +75,14 @@ async function fetchSiteAccess(siteUrl: string): Promise<GeoSiteAccess> {
   };
 }
 
+function pathOf(url: string): string {
+  try {
+    return new URL(url).pathname || "/";
+  } catch {
+    return "/";
+  }
+}
+
 export async function analyzeGeo(siteUrl: string): Promise<GeoAnalysis> {
   const pageRes = await fetchText(siteUrl, { timeoutMs: 25_000 });
   if (!pageRes.ok) {
@@ -86,10 +94,17 @@ export async function analyzeGeo(siteUrl: string): Promise<GeoAnalysis> {
   const access = await fetchSiteAccess(siteUrl);
   const breakdown = scoreGeoBreakdown(signals, access);
   const score = overallGeoScore(breakdown);
-  const items = buildGeoOpportunities(signals, access, breakdown);
+
+  // Prefer the URL the user asked to analyze (e.g. /en), even if the
+  // final fetch redirected to /. Site-level items use their own paths.
+  const requestedPath = pathOf(siteUrl);
+  const fetchedPath = pathOf(fetchedUrl);
+  const pagePath = requestedPath !== "/" ? requestedPath : fetchedPath;
+
+  const items = buildGeoOpportunities(signals, access, breakdown, { pagePath });
 
   const warning =
-    "分数来自 GEO Readiness 规则（页面结构 + robots/llms.txt），不是「已被 ChatGPT 引用」的实测结果。V2 将增加引用探测。";
+    "分数来自 GEO Readiness 规则（页面结构 + robots/llms.txt），不是「已被 ChatGPT 引用」的实测结果。V2 将增加引用探测。V1 目前只分析你输入的这一页，不是全站爬取。";
 
   return {
     url: siteUrl,

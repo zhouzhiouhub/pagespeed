@@ -39,6 +39,7 @@ export type GeoBreakdown = {
 export type GeoOpportunity = {
   id: string;
   type: "geo_readiness" | "geo_asset";
+  scope: "page" | "site";
   title: string;
   page: string;
   missing: string[];
@@ -310,8 +311,10 @@ export function buildGeoOpportunities(
   page: GeoPageSignals,
   access: GeoSiteAccess,
   breakdown: GeoBreakdown,
+  opts?: { pagePath?: string },
 ): GeoOpportunity[] {
   const path = (() => {
+    if (opts?.pagePath?.trim()) return opts.pagePath;
     try {
       return new URL(page.url).pathname || "/";
     } catch {
@@ -325,6 +328,7 @@ export function buildGeoOpportunities(
     items.push({
       id: `def::${path}`,
       type: "geo_readiness",
+      scope: "page",
       title: "缺少可摘取的定义 / 直接答案段",
       page: path,
       missing: ["definition_block"],
@@ -339,6 +343,7 @@ export function buildGeoOpportunities(
     items.push({
       id: `faq::${path}`,
       type: "geo_readiness",
+      scope: "page",
       title: "缺少 FAQ 结构与 FAQPage Schema",
       page: path,
       missing: ["faq", "faq_schema"],
@@ -350,6 +355,7 @@ export function buildGeoOpportunities(
     items.push({
       id: `faq-schema::${path}`,
       type: "geo_readiness",
+      scope: "page",
       title: "有 FAQ 文案但缺少 FAQPage 结构化数据",
       page: path,
       missing: ["faq_schema"],
@@ -363,6 +369,7 @@ export function buildGeoOpportunities(
     items.push({
       id: `entity::${path}`,
       type: "geo_readiness",
+      scope: "page",
       title: "品牌 / 产品实体 Schema 不足",
       page: path,
       missing: ["organization_schema", "product_schema"],
@@ -380,6 +387,7 @@ export function buildGeoOpportunities(
     items.push({
       id: `trust::${path}`,
       type: "geo_readiness",
+      scope: "page",
       title: "可引用信任信号不足（作者 / 更新日期）",
       page: path,
       missing,
@@ -393,8 +401,9 @@ export function buildGeoOpportunities(
     items.push({
       id: "llms-txt",
       type: "geo_asset",
+      scope: "site",
       title: "站点缺少 llms.txt",
-      page: "/",
+      page: "/llms.txt",
       missing: ["llms_txt"],
       potential: 3,
       rationale: "llms.txt 可向 AI 爬虫声明站点要点与推荐入口，属于低成本 GEO 资产。",
@@ -406,8 +415,9 @@ export function buildGeoOpportunities(
     items.push({
       id: "ai-bots-blocked",
       type: "geo_readiness",
+      scope: "site",
       title: "robots.txt 可能拦截主要 AI bot",
-      page: "/",
+      page: "/robots.txt",
       missing: ["ai_bot_access"],
       potential: 5,
       rationale: access.aiBotSummary,
@@ -419,6 +429,7 @@ export function buildGeoOpportunities(
     items.push({
       id: `compare::${path}`,
       type: "geo_asset",
+      scope: "page",
       title: "缺少对比表 / 要点列表等可引用资产",
       page: path,
       missing: ["comparison_table", "key_points"],
