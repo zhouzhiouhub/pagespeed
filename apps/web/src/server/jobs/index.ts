@@ -119,7 +119,8 @@ async function runSyncGsc(payload: Record<string, unknown>): Promise<JobResult> 
   };
 }
 
-async function runSyncGa4(_payload: Record<string, unknown>): Promise<JobResult> {
+async function runSyncGa4(payload: Record<string, unknown>): Promise<JobResult> {
+  void payload;
   return {
     accepted: true,
     name: "sync.ga4",

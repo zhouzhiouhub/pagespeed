@@ -68,29 +68,29 @@ V4  + 自动执行 → 监控 → 再策略
 
 ### M1 · Site Crawler & SEO / GEO Audit
 
-- [ ] `POST /sites` 创建站点
-- [ ] Sitemap / robots 解析（含 AI bot 策略摘要）
-- [ ] 页面抓取与字段抽取（title、description、h1、canonical、schema…）
-- [ ] **GEO 信号抽取**（答案块、FAQ、实体、作者/日期、`llms.txt`）
-- [ ] Issue 规则引擎（缺字段、多 H1、不可索引、**GEO readiness** 等）
-- [ ] 评分算法含 **geo 维**（可先权重表硬编码）
-- [ ] `GET audits/latest` + 网站分析页 + GEO 分展示
+- [x] `POST /sites` 创建站点（`/api/sites`，DB 或文件降级）
+- [x] Sitemap / robots 解析（含 AI bot 策略摘要）
+- [x] 页面抓取与字段抽取（title、description、h1、canonical、schema…）
+- [x] **GEO 信号抽取**（答案块、FAQ、实体、作者/日期 — 页面级；`llms.txt` 仍在 GEO 分析）
+- [x] Issue 规则引擎（缺字段、多 H1、不可索引、**GEO readiness** 等）
+- [x] 评分算法含 **geo 维**（可先权重表硬编码）
+- [x] `GET audits/latest` + Dashboard 分数展示
 
 ### M2 · Integrations
 
-- [ ] Google OAuth（GSC + GA4）
-- [ ] GSC Search Analytics 日报同步 job
+- [x] Google OAuth（GSC；GA4 骨架/降级 UI）
+- [ ] GSC Search Analytics 日报同步 job（需登录态；cron 可读快照）
 - [ ] GA4 页级日报同步 job
-- [ ] Dashboard / Analytics summary API
-- [ ] 未连接时的降级 UI
+- [x] Dashboard / Analytics summary API（`/api/dashboard`；GA4 指标待 OAuth）
+- [x] 未连接时的降级 UI
 
 ### M3 · Insights / Opportunities
 
-- [ ] Keyword 机会启发式（位置区间、CTR、趋势）
-- [ ] Content gap 初版（有展现无专页 / 主题覆盖粗判）
-- [ ] **GEO readiness → opportunity**（高价值页缺 FAQ/定义段等）
+- [x] Keyword 机会启发式（位置区间、CTR、趋势）
+- [x] Content gap 初版（有展现无专页 / 主题覆盖粗判）
+- [x] **GEO readiness → opportunity**（高价值页缺 FAQ/定义段等）
 - [ ] Tech issue → opportunity 提升（带业务影响过滤：无流量低优）
-- [ ] Opportunities API + 关键词/内容/**GEO** 页对接
+- [x] Opportunities API + 关键词/内容/**GEO** 页对接
 - [ ] evidence 落库
 
 ### M4 · Agents
@@ -98,17 +98,17 @@ V4  + 自动执行 → 监控 → 再策略
 - [ ] Agent 接口与 tool 层（读 page / gsc / ga）
 - [ ] Analytics Agent：指标 → 叙事
 - [ ] Keyword / SEO / **GEO** / Content 轻量 Agent
-- [ ] Orchestrator：每日 Top N 建议（可含 GEO 卡）
-- [ ] Action Plan 生成 API + UI 面板（含定义段/FAQ/Schema）
-- [ ] 「标记已处理 / 忽略」
+- [x] Orchestrator：每日 Top N 建议（可含 GEO 卡）
+- [x] Action Plan 生成 API + UI 面板（含定义段/FAQ/Schema；Advice 卡可生成）
+- [x] 「标记已处理 / 忽略」
 
 ### M5 · 体验与自用闭环
 
 - [ ] Onboarding 向导
-- [ ] 今日增长建议页完整信息架构
-- [ ] 失败重试与 job 状态
+- [x] 今日增长建议页完整信息架构
+- [x] 失败重试与 job 状态（`/api/cron/run` 进程内执行）
 - [ ] 用 Kinolin 真实数据跑 7 天，记录误报并调权
-- [ ] README 启动说明
+- [x] README 启动说明
 
 ---
 

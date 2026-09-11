@@ -12,6 +12,7 @@ export type Ga4Status = {
 };
 
 export async function getGa4Status(_siteUrl?: string): Promise<Ga4Status> {
+  void _siteUrl;
   const propertyId = process.env.GA4_PROPERTY_ID?.trim() || null;
   const connected = Boolean(
     propertyId &&
