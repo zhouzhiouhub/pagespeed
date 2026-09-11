@@ -3,6 +3,7 @@ import { parseSiteUrl } from "@/lib/url";
 import { fetchText } from "@/server/http/fetch";
 import { extractPageSignals } from "@/server/keywords/extract";
 import { buildKeywordOpportunities } from "@/server/keywords/opportunities";
+import { readGscStore } from "@/server/gsc/store";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -20,6 +21,29 @@ export async function GET(request: Request) {
   }
 
   try {
+    const store = await readGscStore();
+    const sameSite =
+      store.siteUrl &&
+      (store.siteUrl === parsed.url ||
+        parsed.url.startsWith(store.siteUrl) ||
+        store.siteUrl.includes(new URL(parsed.url).hostname));
+
+    if (store.opportunities.length > 0 && store.selectedProperty && sameSite) {
+      return NextResponse.json({
+        url: parsed.url,
+        generatedAt: store.lastSyncedAt ?? new Date().toISOString(),
+        source: "gsc",
+        model: null,
+        warning: null,
+        gsc: {
+          property: store.selectedProperty,
+          lastSyncedAt: store.lastSyncedAt,
+          rowCount: store.rows.length,
+        },
+        items: store.opportunities,
+      });
+    }
+
     const page = await fetchText(parsed.url, { timeoutMs: 25_000 });
     if (!page.ok) {
       return NextResponse.json(

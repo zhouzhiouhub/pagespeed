@@ -17,6 +17,11 @@ export type KeywordsResponse = {
   source: "ai" | "heuristic" | "gsc";
   model: string | null;
   warning: string | null;
+  gsc?: {
+    property: string | null;
+    lastSyncedAt: string | null;
+    rowCount: number;
+  };
   signals?: {
     title: string | null;
     description: string | null;

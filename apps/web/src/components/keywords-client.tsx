@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { PageShell } from "@/components/page-shell";
+import { GscConnectPanel } from "@/components/gsc-connect-panel";
 import {
   getCachedKeywords,
   setCachedKeywords,
@@ -251,6 +252,19 @@ export function KeywordsClient({ initialUrl }: { initialUrl: string | null }) {
         </div>
       ) : (
         <div className="space-y-5">
+          <GscConnectPanel
+            siteUrl={siteUrl}
+            onSynced={() => {
+              // Force reload from server GSC store
+              try {
+                sessionStorage.removeItem("webagent:keywords-cache:v1");
+              } catch {
+                // ignore
+              }
+              void load(siteUrl, { force: true });
+            }}
+          />
+
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-5 py-4">
             <div>
               <p className="text-sm text-[var(--muted)]">当前站点</p>
