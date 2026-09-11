@@ -96,7 +96,7 @@ Workers Builds 建议配置：
 | Build command | `npm run build` |
 | Deploy command | `npx wrangler deploy` |
 
-`npm run build` 会跑 OpenNext（`apps/web`），产物在 `apps/web/.open-next/`。根目录 `wrangler.jsonc` 指向该产物，因此默认的 `npx wrangler deploy` 可在 monorepo 根执行。
+Worker 名称须与 Cloudflare 项目一致（当前为 `pagespeed`）。`npm run build` 会跑 OpenNext（`apps/web`），产物在 `apps/web/.open-next/`。根目录 `wrangler.jsonc` 指向该产物，因此默认的 `npx wrangler deploy` 可在 monorepo 根执行。
 
 也可显式部署子应用：`npm run deploy`（等价于在 `apps/web` 内执行 `opennextjs-cloudflare deploy`）。
 
