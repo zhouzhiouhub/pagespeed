@@ -5,7 +5,11 @@ const rawUrlSchema = z.string().trim().min(1, "请输入网站地址");
 export function normalizeSiteUrl(input: string): string {
   const trimmed = input.trim();
   if (!trimmed) return trimmed;
-  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  // Prefer https for public sites so lab scores match pagespeed.web.dev
+  if (/^http:\/\//i.test(trimmed)) {
+    return trimmed.replace(/^http:\/\//i, "https://");
+  }
+  if (/^https:\/\//i.test(trimmed)) return trimmed;
   return `https://${trimmed}`;
 }
 

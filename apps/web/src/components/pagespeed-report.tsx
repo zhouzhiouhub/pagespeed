@@ -90,16 +90,24 @@ export function PagespeedReport({ url }: { url: string }) {
           ))}
         </div>
         {loading ? (
-          <p className="text-sm text-[var(--muted)]">正在调用 PageSpeed Insights…</p>
+          <p className="text-sm text-[var(--muted)]">正在分析页面性能…</p>
         ) : null}
       </div>
 
       {error ? (
         <div
           role="alert"
-          className="rounded-xl border border-[#f5c2c0] bg-[#fef2f1] px-4 py-3 text-sm text-[#d93025]"
+          className="space-y-3 rounded-xl border border-[#f5c2c0] bg-[#fef2f1] px-4 py-3 text-sm text-[#d93025]"
         >
-          {error}
+          <p>{error}</p>
+          <button
+            type="button"
+            disabled={loading}
+            onClick={() => void load(strategy)}
+            className="rounded-md bg-[var(--brand-blue)] px-3 py-1.5 text-sm font-medium text-white disabled:opacity-60"
+          >
+            重试分析
+          </button>
         </div>
       ) : null}
 

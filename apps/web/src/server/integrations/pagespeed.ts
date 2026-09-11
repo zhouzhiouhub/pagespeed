@@ -76,6 +76,8 @@ const SEO_AUDIT_IDS = new Set([
   "viewport",
 ]);
 
+const MAX_ATTEMPTS = 3;
+
 function requireApiKey(): string {
   const key = process.env.PAGESPEED_API_KEY?.trim();
   if (!key) {
@@ -98,32 +100,86 @@ function resolveProxyUrl(): string | null {
   return null;
 }
 
-function createDispatcher() {
+type Dispatcher = Agent | ProxyAgent;
+
+let sharedDispatcher: Dispatcher | null = null;
+let sharedDispatcherProxy: string | null | undefined;
+
+function getDispatcher(): Dispatcher {
   const proxy = resolveProxyUrl();
-  if (proxy) {
-    return new ProxyAgent(proxy);
+  if (sharedDispatcher && sharedDispatcherProxy === proxy) {
+    return sharedDispatcher;
   }
-  return new Agent({
-    connectTimeout: 60_000,
-    headersTimeout: 120_000,
-    bodyTimeout: 120_000,
-  });
+
+  sharedDispatcher?.close().catch(() => undefined);
+  sharedDispatcherProxy = proxy;
+  sharedDispatcher = proxy
+    ? new ProxyAgent(proxy)
+    : new Agent({
+        connectTimeout: 60_000,
+        headersTimeout: 120_000,
+        bodyTimeout: 120_000,
+      });
+  return sharedDispatcher;
+}
+
+function resetDispatcher() {
+  sharedDispatcher?.close().catch(() => undefined);
+  sharedDispatcher = null;
+  sharedDispatcherProxy = undefined;
+}
+
+function isTransientNetworkError(err: unknown): boolean {
+  const message = err instanceof Error ? err.message : String(err);
+  const cause = err instanceof Error ? err.cause : undefined;
+  const causeMessage =
+    cause instanceof Error
+      ? cause.message
+      : typeof cause === "object" && cause && "message" in cause
+        ? String((cause as { message?: unknown }).message)
+        : "";
+  const code =
+    typeof cause === "object" && cause && "code" in cause
+      ? String((cause as { code?: unknown }).code)
+      : err instanceof Error && "code" in err
+        ? String((err as Error & { code?: unknown }).code)
+        : "";
+
+  const haystack = `${message} ${causeMessage} ${code}`.toLowerCase();
+  return (
+    haystack.includes("timeout") ||
+    haystack.includes("tls") ||
+    haystack.includes("socket") ||
+    haystack.includes("econnreset") ||
+    haystack.includes("econnrefused") ||
+    haystack.includes("und_err") ||
+    haystack.includes("fetch failed") ||
+    haystack.includes("network")
+  );
 }
 
 function formatFetchError(err: unknown): string {
   if (!(err instanceof Error)) return "PageSpeed 请求失败";
   const cause = err.cause as { code?: string; message?: string } | undefined;
-  const code = cause?.code ?? (err as Error & { code?: string }).code;
-  if (code === "UND_ERR_CONNECT_TIMEOUT" || /timeout/i.test(err.message)) {
-    return "连接 Google PageSpeed API 超时。若在国内网络，请在 .env.local 设置 HTTPS_PROXY（或 PAGESPEED_HTTP_PROXY）后重启。";
+  const detail = cause?.message || err.message || "PageSpeed 请求失败";
+
+  if (/tls|socket disconnected|secure tls/i.test(detail)) {
+    return `连接 Google 时 TLS 中断（多为本地代理不稳定）。请确认 Clash 等代理已开启且端口与 .env.local 中 HTTPS_PROXY 一致，然后重试。详情：${detail}`;
   }
-  return cause?.message || err.message || "PageSpeed 请求失败";
+  if (
+    cause?.code === "UND_ERR_CONNECT_TIMEOUT" ||
+    /timeout/i.test(detail)
+  ) {
+    return "连接 Google PageSpeed API 超时。请检查 HTTPS_PROXY / PAGESPEED_HTTP_PROXY 后重试。";
+  }
+  return detail;
 }
 
-export async function runPageSpeed(
-  url: string,
-  strategy: PsiStrategy = "mobile",
-): Promise<PsiSummary> {
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function fetchPageSpeedRaw(url: string, strategy: PsiStrategy) {
   const key = requireApiKey();
   const endpoint = new URL(
     "https://www.googleapis.com/pagespeedonline/v5/runPagespeed",
@@ -141,75 +197,92 @@ export async function runPageSpeed(
     endpoint.searchParams.append("category", category);
   }
 
-  let res: Awaited<ReturnType<typeof undiciFetch>>;
-  try {
-    res = await undiciFetch(endpoint, {
-      method: "GET",
-      dispatcher: createDispatcher(),
-    });
-  } catch (err) {
-    throw new Error(formatFetchError(err));
-  }
-
-  const data = (await res.json()) as PsiApiResponse;
-
-  if (!res.ok || data.error) {
-    throw new Error(
-      data.error?.message ?? `PageSpeed API failed (${res.status})`,
-    );
-  }
-
-  const lighthouse = data.lighthouseResult;
-  if (!lighthouse) {
-    throw new Error("PageSpeed API returned no lighthouseResult");
-  }
-
-  const scores: PsiCategoryScore[] = Object.values(
-    lighthouse.categories ?? {},
-  ).map((c) => ({
-    id: c.id ?? "",
-    title: c.title ?? c.id ?? "",
-    score: typeof c.score === "number" ? Math.round(c.score * 100) : null,
-  }));
-
-  const audits = lighthouse.audits ?? {};
-  const metrics: PsiMetric[] = METRIC_IDS.map((id) => {
-    const a = audits[id];
-    return {
-      id,
-      title: a?.title ?? id,
-      displayValue: a?.displayValue ?? null,
-      score: typeof a?.score === "number" ? a.score : null,
-    };
+  return undiciFetch(endpoint, {
+    method: "GET",
+    dispatcher: getDispatcher(),
   });
+}
 
-  const failedUseful = Object.values(audits)
-    .filter(
-      (a) =>
-        typeof a.score === "number" &&
-        a.score < 1 &&
-        Boolean(a.title) &&
-        a.details?.type !== "debugdata",
-    )
-    .filter((a) => {
-      const id = a.id ?? "";
-      return id.includes("seo") || SEO_AUDIT_IDS.has(id);
-    })
-    .slice(0, 10)
-    .map((a) => ({
-      id: a.id ?? "",
-      title: a.title ?? "",
-      description: a.description ?? null,
-      score: typeof a.score === "number" ? a.score : null,
-      displayValue: a.displayValue ?? null,
-    }));
+export async function runPageSpeed(
+  url: string,
+  strategy: PsiStrategy = "mobile",
+): Promise<PsiSummary> {
+  let lastError: unknown;
 
-  return {
-    url: data.id ?? url,
-    strategy,
-    fetchTime: lighthouse.fetchTime ?? null,
-    scores,
-    metrics,
-    seoAudits: failedUseful,
-  };
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      const res = await fetchPageSpeedRaw(url, strategy);
+      const data = (await res.json()) as PsiApiResponse;
+
+      if (!res.ok || data.error) {
+        throw new Error(
+          data.error?.message ?? `PageSpeed API failed (${res.status})`,
+        );
+      }
+
+      const lighthouse = data.lighthouseResult;
+      if (!lighthouse) {
+        throw new Error("PageSpeed API returned no lighthouseResult");
+      }
+
+      const scores: PsiCategoryScore[] = Object.values(
+        lighthouse.categories ?? {},
+      ).map((c) => ({
+        id: c.id ?? "",
+        title: c.title ?? c.id ?? "",
+        score: typeof c.score === "number" ? Math.round(c.score * 100) : null,
+      }));
+
+      const audits = lighthouse.audits ?? {};
+      const metrics: PsiMetric[] = METRIC_IDS.map((id) => {
+        const a = audits[id];
+        return {
+          id,
+          title: a?.title ?? id,
+          displayValue: a?.displayValue ?? null,
+          score: typeof a?.score === "number" ? a.score : null,
+        };
+      });
+
+      const failedUseful = Object.values(audits)
+        .filter(
+          (a) =>
+            typeof a.score === "number" &&
+            a.score < 1 &&
+            Boolean(a.title) &&
+            a.details?.type !== "debugdata",
+        )
+        .filter((a) => {
+          const id = a.id ?? "";
+          return id.includes("seo") || SEO_AUDIT_IDS.has(id);
+        })
+        .slice(0, 10)
+        .map((a) => ({
+          id: a.id ?? "",
+          title: a.title ?? "",
+          description: a.description ?? null,
+          score: typeof a.score === "number" ? a.score : null,
+          displayValue: a.displayValue ?? null,
+        }));
+
+      return {
+        url: data.id ?? url,
+        strategy,
+        fetchTime: lighthouse.fetchTime ?? null,
+        scores,
+        metrics,
+        seoAudits: failedUseful,
+      };
+    } catch (err) {
+      lastError = err;
+      if (attempt < MAX_ATTEMPTS && isTransientNetworkError(err)) {
+        resetDispatcher();
+        await sleep(800 * attempt);
+        continue;
+      }
+      break;
+    }
+  }
+
+  throw new Error(formatFetchError(lastError));
 }
