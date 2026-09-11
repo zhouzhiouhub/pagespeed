@@ -150,8 +150,14 @@ async function runSyncGsc(payload: Record<string, unknown>): Promise<JobResult> 
   };
   await writeGscStore(next);
 
-  let metricsPersist = { rows: 0, persistedTo: "none" as const };
-  let oppPersist = { count: 0, persistedTo: "file" as const };
+  let metricsPersist: { rows: number; persistedTo: "postgres" | "none" } = {
+    rows: 0,
+    persistedTo: "none",
+  };
+  let oppPersist: { count: number; persistedTo: "postgres" | "file" } = {
+    count: 0,
+    persistedTo: "file",
+  };
   if (siteUrl) {
     metricsPersist = await persistGscDailyRows(siteUrl, next);
     oppPersist = await persistOpportunities(siteUrl, draftsFromGsc(next));

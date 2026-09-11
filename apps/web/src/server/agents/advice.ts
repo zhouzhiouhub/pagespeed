@@ -6,6 +6,7 @@ import { buildContentGaps } from "@/server/content/gaps";
 import { analyzeGeo } from "@/server/geo/analyze";
 import { readGscStore } from "@/server/gsc/store";
 import { runPageSpeed } from "@/server/integrations/pagespeed";
+import { readGa4Store } from "@/server/ga4/store";
 import { generateText } from "@/server/llm/gemini";
 import {
   readAdviceRun,
@@ -204,6 +205,43 @@ async function collectCandidates(siteUrl: string): Promise<{
     }
   } catch (err) {
     warnings.push(err instanceof Error ? `GEO: ${err.message}` : "GEO 分析失败");
+  }
+
+  try {
+    const ga4 = await readGa4Store();
+    const sameGa =
+      ga4.siteUrl &&
+      (ga4.siteUrl === siteUrl ||
+        siteUrl.includes(ga4.siteUrl) ||
+        ga4.siteUrl.includes(new URL(siteUrl).hostname));
+    if (sameGa && ga4.lastSyncedAt && ga4.topPages.length > 0) {
+      sources.push("ga4");
+      const top = ga4.topPages[0];
+      candidates.push({
+        id: `ga4-top:${top.path}`,
+        priority: "medium",
+        type: "cro",
+        title: `高流量页「${top.path}」可做转化/GEO 加固`,
+        summary: `近 7 天约 ${top.sessions} sessions / ${top.users} users。优先检查答案块、FAQ、CTA 与内链。`,
+        evidence: {
+          path: top.path,
+          sessions: top.sessions,
+          users: top.users,
+          sessions7d: ga4.sessions7d,
+          users7d: ga4.users7d,
+        },
+        suggestedActions: [
+          "核对首屏直接答案与 CTA",
+          "补 FAQ / Schema",
+          "从相关内容页加强内链",
+        ],
+        score: 0.62,
+        href: `/geo?url=${encodeURIComponent(siteUrl)}`,
+        ctaLabel: "查看 GEO",
+      });
+    }
+  } catch (err) {
+    warnings.push(err instanceof Error ? `GA4: ${err.message}` : "GA4 读取失败");
   }
 
   if (process.env.PAGESPEED_API_KEY?.trim() || process.env.GOOGLE_API_KEY?.trim()) {
