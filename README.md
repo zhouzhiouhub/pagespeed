@@ -94,11 +94,24 @@ Workers Builds 建议配置：
 | --- | --- |
 | Root directory | `/`（仓库根） |
 | Build command | `npm run build` |
-| Deploy command | `npx wrangler deploy` |
+| Deploy command | `npx wrangler deploy --keep-vars` |
 
 Worker 名称须与 Cloudflare 项目一致（当前为 `pagespeed`）。`npm run build` 会跑 OpenNext（`apps/web`），产物在 `apps/web/.open-next/`。根目录 `wrangler.jsonc` 指向该产物，因此默认的 `npx wrangler deploy` 可在 monorepo 根执行。
 
-也可显式部署子应用：`npm run deploy`（等价于在 `apps/web` 内执行 `opennextjs-cloudflare deploy`）。
+也可显式部署子应用：`npm run deploy`（等价于在 `apps/web` 内执行 `opennextjs-cloudflare deploy -- --keep-vars`）。
+
+### 一键同步环境变量
+
+1. 编辑 `apps/web/.env.local`（本地开发）
+2. 复制 `.env.cloudflare.example` → `.env.cloudflare`，填生产值（至少 `NEXTAUTH_URL`、生产 `DATABASE_URL`）
+3. 推送到 Cloudflare Worker secrets：
+
+```bash
+npm run cf:env:dry   # 预览将上传的 key
+npm run cf:env       # 实际上传
+```
+
+本地代理（`HTTP_PROXY` 等）和 `localhost` 的 `DATABASE_URL` / `NEXTAUTH_URL` 会被自动跳过。Workers Builds 若还需要构建期变量，在控制台 Build variables 里粘贴同一批 key，或构建成功后依赖运行时 secrets 即可（本项目路由多为动态）。
 
 ## 仓库结构
 
