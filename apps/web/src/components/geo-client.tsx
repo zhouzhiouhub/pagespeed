@@ -75,6 +75,23 @@ function BreakdownBars({ breakdown }: { breakdown: GeoBreakdown }) {
   );
 }
 
+function pageKindLabel(kind: string | undefined) {
+  switch (kind) {
+    case "home_portfolio":
+      return "个人站 / 作品集";
+    case "product":
+      return "产品页";
+    case "docs":
+      return "文档 / 教程";
+    case "article":
+      return "文章 / 博客";
+    case "landing":
+      return "落地页";
+    default:
+      return "未分类";
+  }
+}
+
 function SignalChip({ ok, label }: { ok: boolean; label: string }) {
   return (
     <span
@@ -560,48 +577,95 @@ export function GeoClient({ initialUrl }: { initialUrl: string | null }) {
               {/* Page signals — previously hidden */}
               <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-5 py-5">
                 <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
-                  当前页信号
+                  内容判定 → 期望 → 缺口
                 </p>
-                {(data.page.title || data.page.h1.length > 0) && (
-                  <div className="mt-3 space-y-1 text-sm">
-                    {data.page.title ? (
-                      <p className="text-[var(--fg)]">
-                        <span className="text-[var(--muted)]">Title：</span>
-                        {data.page.title}
-                      </p>
-                    ) : null}
-                    {data.page.h1.length > 0 ? (
-                      <p className="text-[var(--fg)]">
-                        <span className="text-[var(--muted)]">H1：</span>
-                        {data.page.h1.join(" / ")}
-                      </p>
-                    ) : null}
-                    {data.page.description ? (
-                      <p className="text-[var(--muted)]">
-                        <span className="text-[var(--muted)]">Description：</span>
-                        {data.page.description}
-                      </p>
-                    ) : null}
-                  </div>
-                )}
+                <div className="mt-3 space-y-2 text-sm">
+                  <p className="text-[var(--fg)]">
+                    <span className="text-[var(--muted)]">页面类型：</span>
+                    {pageKindLabel(data.page.pageKind)}
+                  </p>
+                  {data.page.pageKindReason ? (
+                    <p className="text-[var(--muted)]">{data.page.pageKindReason}</p>
+                  ) : null}
+                  {data.page.expectations ? (
+                    <p className="text-[var(--muted)]">
+                      本页期望：
+                      {[
+                        data.page.expectations.needsDefinition ? "定义/简介" : null,
+                        data.page.expectations.needsFaq ? "FAQ" : null,
+                        data.page.expectations.needsHowTo ? "HowTo" : null,
+                        data.page.expectations.needsComparison ? "对比表" : null,
+                        data.page.expectations.needsAuthorDate ? "作者/日期" : null,
+                        data.page.expectations.needsProductSchema
+                          ? "产品 Schema"
+                          : null,
+                        data.page.expectations.needsOrgOrPerson
+                          ? "Person/Org 实体"
+                          : null,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ") || "站点级访问性"}
+                      {!data.page.expectations.needsFaq
+                        ? "（不强制 FAQ）"
+                        : ""}
+                    </p>
+                  ) : null}
+                  {data.page.title ? (
+                    <p className="text-[var(--fg)]">
+                      <span className="text-[var(--muted)]">Title：</span>
+                      {data.page.title}
+                    </p>
+                  ) : null}
+                  {data.page.h1.length > 0 ? (
+                    <p className="text-[var(--fg)]">
+                      <span className="text-[var(--muted)]">H1：</span>
+                      {data.page.h1.join(" / ")}
+                    </p>
+                  ) : null}
+                  {data.page.description ? (
+                    <p className="text-[var(--muted)]">{data.page.description}</p>
+                  ) : null}
+                </div>
                 <div className="mt-4 flex flex-wrap gap-2">
                   <SignalChip
                     ok={data.page.flags.hasDefinitionCue}
                     label="定义线索"
                   />
-                  <SignalChip ok={data.page.flags.hasFaqHeading} label="FAQ 标题" />
-                  <SignalChip ok={data.page.flags.hasFaqSchema} label="FAQ Schema" />
+                  {data.page.expectations?.needsFaq ? (
+                    <>
+                      <SignalChip
+                        ok={data.page.flags.hasFaqHeading}
+                        label="FAQ 标题"
+                      />
+                      <SignalChip
+                        ok={data.page.flags.hasFaqSchema}
+                        label="FAQ Schema"
+                      />
+                    </>
+                  ) : null}
+                  <SignalChip
+                    ok={Boolean(data.page.flags.hasPersonSchema)}
+                    label="Person"
+                  />
                   <SignalChip ok={data.page.flags.hasOrgSchema} label="Organization" />
-                  <SignalChip
-                    ok={data.page.flags.hasProductSchema}
-                    label="Product/App"
-                  />
-                  <SignalChip ok={data.page.flags.hasAuthor} label="作者" />
-                  <SignalChip
-                    ok={data.page.flags.hasDateModified}
-                    label="更新日期"
-                  />
-                  <SignalChip ok={data.page.flags.hasTable} label="表格" />
+                  {data.page.expectations?.needsProductSchema ? (
+                    <SignalChip
+                      ok={data.page.flags.hasProductSchema}
+                      label="Product/App"
+                    />
+                  ) : null}
+                  {data.page.expectations?.needsAuthorDate ? (
+                    <>
+                      <SignalChip ok={data.page.flags.hasAuthor} label="作者" />
+                      <SignalChip
+                        ok={data.page.flags.hasDateModified}
+                        label="更新日期"
+                      />
+                    </>
+                  ) : null}
+                  {data.page.expectations?.needsComparison ? (
+                    <SignalChip ok={data.page.flags.hasTable} label="表格" />
+                  ) : null}
                 </div>
               </div>
 

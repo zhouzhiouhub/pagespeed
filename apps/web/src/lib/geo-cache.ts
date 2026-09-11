@@ -37,12 +37,29 @@ export type GeoResponse = {
     title: string | null;
     description: string | null;
     h1: string[];
+    pageKind?:
+      | "home_portfolio"
+      | "product"
+      | "article"
+      | "docs"
+      | "landing";
+    pageKindReason?: string;
+    expectations?: {
+      needsFaq: boolean;
+      needsDefinition: boolean;
+      needsHowTo: boolean;
+      needsComparison: boolean;
+      needsAuthorDate: boolean;
+      needsProductSchema: boolean;
+      needsOrgOrPerson: boolean;
+    };
     flags: {
       hasFaqHeading: boolean;
       hasDefinitionCue: boolean;
       hasFaqSchema: boolean;
       hasOrgSchema: boolean;
       hasProductSchema: boolean;
+      hasPersonSchema?: boolean;
       hasAuthor: boolean;
       hasDateModified: boolean;
       hasTable: boolean;
@@ -68,7 +85,7 @@ export type GeoPlan = {
   warning: string | null;
 };
 
-const CACHE_KEY = "webagent:geo-cache:v2";
+const CACHE_KEY = "webagent:geo-cache:v3";
 const memory = new Map<string, { savedAt: number; data: GeoResponse }>();
 
 function readStore(): Record<string, { savedAt: number; data: GeoResponse }> {

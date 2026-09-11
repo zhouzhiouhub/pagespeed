@@ -1,6 +1,7 @@
 import { fetchText } from "@/server/http/fetch";
 import {
   buildGeoOpportunities,
+  expectationsFor,
   extractGeoPageSignals,
   overallGeoScore,
   parseRobotsAiPolicy,
@@ -22,12 +23,24 @@ export type GeoAnalysis = {
     title: string | null;
     description: string | null;
     h1: string[];
+    pageKind: GeoPageSignals["pageKind"];
+    pageKindReason: string;
+    expectations: {
+      needsFaq: boolean;
+      needsDefinition: boolean;
+      needsHowTo: boolean;
+      needsComparison: boolean;
+      needsAuthorDate: boolean;
+      needsProductSchema: boolean;
+      needsOrgOrPerson: boolean;
+    };
     flags: {
       hasFaqHeading: boolean;
       hasDefinitionCue: boolean;
       hasFaqSchema: boolean;
       hasOrgSchema: boolean;
       hasProductSchema: boolean;
+      hasPersonSchema: boolean;
       hasAuthor: boolean;
       hasDateModified: boolean;
       hasTable: boolean;
@@ -104,7 +117,9 @@ export async function analyzeGeo(siteUrl: string): Promise<GeoAnalysis> {
   const items = buildGeoOpportunities(signals, access, breakdown, { pagePath });
 
   const warning =
-    "分数来自 GEO Readiness 规则（页面结构 + robots/llms.txt），不是「已被 ChatGPT 引用」的实测结果。V2 将增加引用探测。V1 目前只分析你输入的这一页，不是全站爬取。";
+    "流程：抓取 URL 内容 → 判定页面类型 → 按类型期望检查缺口 → 评分。分数是 GEO Readiness（非引用实测）。V1 只分析你输入的这一页。";
+
+  const expectations = expectationsFor(signals.pageKind);
 
   return {
     url: siteUrl,
@@ -117,12 +132,16 @@ export async function analyzeGeo(siteUrl: string): Promise<GeoAnalysis> {
       title: signals.title,
       description: signals.description,
       h1: signals.h1,
+      pageKind: signals.pageKind,
+      pageKindReason: signals.pageKindReason,
+      expectations,
       flags: {
         hasFaqHeading: signals.hasFaqHeading,
         hasDefinitionCue: signals.hasDefinitionCue,
         hasFaqSchema: signals.hasFaqSchema,
         hasOrgSchema: signals.hasOrgSchema,
         hasProductSchema: signals.hasProductSchema,
+        hasPersonSchema: signals.hasPersonSchema,
         hasAuthor: signals.hasAuthor,
         hasDateModified: signals.hasDateModified,
         hasTable: signals.hasTable,
