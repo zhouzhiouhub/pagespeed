@@ -3,15 +3,19 @@
   "private": true,
   "version": "0.1.0",
   "description": "Website Growth Agent — SEO + GEO + Analytics + Execution",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
-    "dev": "npm run dev --prefix apps/web",
-    "build": "npm run build --prefix apps/web",
-    "start": "npm run start --prefix apps/web",
-    "lint": "npm run lint --prefix apps/web",
-    "test": "npm test --prefix apps/web",
-    "db:generate": "npm run db:generate --prefix apps/web",
-    "db:migrate": "npm run db:migrate --prefix apps/web",
-    "db:studio": "npm run db:studio --prefix apps/web"
+    "dev": "npm run dev -w web",
+    "build": "npm run build -w web",
+    "start": "npm run start -w web",
+    "lint": "npm run lint -w web",
+    "test": "npm test -w web",
+    "db:generate": "npm run db:generate -w web",
+    "db:migrate": "npm run db:migrate -w web",
+    "db:studio": "npm run db:studio -w web"
   },
   "engines": {
     "node": ">=20"
