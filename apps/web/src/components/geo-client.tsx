@@ -27,69 +27,28 @@ function scoreColor(score: number) {
   return "text-[#d93025]";
 }
 
-function missingLabel(code: string) {
-  const map: Record<string, string> = {
-    definition_block: "定义段",
-    faq: "FAQ",
-    faq_schema: "FAQ Schema",
-    organization_schema: "Organization",
-    product_schema: "Product Schema",
-    author: "作者",
-    dateModified: "更新日期",
-    llms_txt: "llms.txt",
-    ai_bot_access: "AI bot 访问",
-    comparison_table: "对比表",
-    key_points: "要点列表",
-  };
-  return map[code] ?? code;
-}
-
 function BreakdownBars({ breakdown }: { breakdown: GeoBreakdown }) {
-  const rows: Array<{ key: keyof GeoBreakdown; label: string }> = [
-    { key: "answerability", label: "Answerability" },
-    { key: "structure", label: "Structure" },
-    { key: "trust", label: "Trust" },
-    { key: "ai_access", label: "AI Access" },
-    { key: "entity", label: "Entity" },
-  ];
+  const rows = (Object.keys(breakdown) as Array<keyof GeoBreakdown>).map(
+    (key) => ({ key, label: key, value: breakdown[key] }),
+  );
   return (
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
-      {rows.map((row) => {
-        const value = breakdown[row.key];
-        return (
-          <div key={row.key}>
-            <div className="mb-1 flex items-center justify-between text-xs">
-              <span className="text-[var(--muted)]">{row.label}</span>
-              <span className="font-medium text-[var(--fg)]">{value}</span>
-            </div>
-            <div className="h-2 overflow-hidden rounded-full bg-[var(--surface-2)]">
-              <div
-                className="h-full rounded-full bg-[var(--brand-blue)]"
-                style={{ width: `${value}%` }}
-              />
-            </div>
+      {rows.map((row) => (
+        <div key={row.key}>
+          <div className="mb-1 flex items-center justify-between text-xs">
+            <span className="text-[var(--muted)]">{row.label}</span>
+            <span className="font-medium text-[var(--fg)]">{row.value}</span>
           </div>
-        );
-      })}
+          <div className="h-2 overflow-hidden rounded-full bg-[var(--surface-2)]">
+            <div
+              className="h-full rounded-full bg-[var(--brand-blue)]"
+              style={{ width: `${row.value}%` }}
+            />
+          </div>
+        </div>
+      ))}
     </div>
   );
-}
-
-function pageKindLabel(kind: string | undefined) {
-  switch (kind) {
-    case "home_portfolio":
-      return "个人站 / 作品集";
-    case "product":
-      return "产品页";
-    case "docs":
-      return "文档 / 教程";
-    case "article":
-      return "文章 / 博客";
-    case "landing":
-      return "落地页";
-    default:
-      return "未分类";
-  }
 }
 
 function SignalChip({ ok, label }: { ok: boolean; label: string }) {
@@ -134,7 +93,7 @@ function OpportunityList({
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold text-[var(--fg)]">{item.title}</p>
                 <p className="mt-1 text-xs text-[var(--muted)]">
-                  {item.scope === "site" ? "站点级" : "当前页"} ·{" "}
+                  {item.scope} ·{" "}
                   <span className="font-mono text-[var(--fg)]">{item.page}</span>
                   {" · "}
                   {item.type}
@@ -150,10 +109,10 @@ function OpportunityList({
             <div className="mt-3 flex flex-wrap gap-1.5">
               {item.missing.map((m) => (
                 <span
-                  key={m}
+                  key={`${m.code}-${m.label}`}
                   className="rounded-md bg-[var(--surface-2)] px-2 py-0.5 text-xs text-[var(--muted)]"
                 >
-                  {missingLabel(m)}
+                  {m.label}
                 </span>
               ))}
             </div>
@@ -208,44 +167,42 @@ function DetailPanel({
   return (
     <aside className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-5 py-5">
       <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
-        选中机会 · {item.scope === "site" ? "站点级" : "当前页"} · {item.type}
+        {item.scope} · {item.type}
       </p>
       <h2 className="mt-2 text-lg font-semibold text-[var(--fg)]">{item.title}</h2>
 
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
         <div className="text-sm">
-          <p className="text-[var(--muted)]">
-            {item.scope === "site" ? "作用范围" : "页面"}
-          </p>
+          <p className="text-[var(--muted)]">page</p>
           <p className="mt-0.5 font-mono text-[var(--fg)]">{item.page}</p>
         </div>
         <div className="text-sm">
-          <p className="text-[var(--muted)]">价值</p>
+          <p className="text-[var(--muted)]">potential</p>
           <p className="mt-0.5 text-[#f4b400]">{stars(item.potential)}</p>
         </div>
       </div>
 
       <div className="mt-4 text-sm">
-        <p className="text-[var(--muted)]">缺失项</p>
+        <p className="text-[var(--muted)]">missing</p>
         <div className="mt-2 flex flex-wrap gap-1.5">
           {item.missing.map((m) => (
             <span
-              key={m}
+              key={`${m.code}-${m.label}`}
               className="rounded-md bg-[var(--surface-2)] px-2 py-1 text-xs text-[var(--fg)]"
             >
-              {missingLabel(m)}
+              {m.label}
             </span>
           ))}
         </div>
       </div>
 
       <div className="mt-4 text-sm">
-        <p className="text-[var(--muted)]">为什么重要</p>
+        <p className="text-[var(--muted)]">rationale</p>
         <p className="mt-1 leading-relaxed text-[var(--fg)]">{item.rationale}</p>
       </div>
 
       <div className="mt-4 text-sm">
-        <p className="text-[var(--muted)]">建议动作</p>
+        <p className="text-[var(--muted)]">actions</p>
         <ol className="mt-2 list-decimal space-y-1.5 pl-5 text-[var(--fg)]">
           {item.actions.map((action) => (
             <li key={action}>{action}</li>
@@ -259,7 +216,7 @@ function DetailPanel({
         onClick={() => void generatePlan()}
         className="mt-5 w-full rounded-lg bg-[var(--brand-blue)] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[var(--brand-blue-deep)] disabled:opacity-60 sm:w-auto"
       >
-        {busy ? "正在生成方案…" : plan ? "重新生成 GEO 方案" : "生成 GEO 方案"}
+        {busy ? "…" : plan ? "regen plan" : "generate plan"}
       </button>
 
       {planError ? (
@@ -270,8 +227,8 @@ function DetailPanel({
         <div className="mt-5 space-y-5 border-t border-[var(--border)] pt-5 text-sm">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
-              GEO 方案
-              {plan.source === "ai" ? " · AI" : " · 规则模板"}
+              plan · {plan.source}
+              {plan.model ? ` · ${plan.model}` : ""}
             </p>
             <p className="mt-2 leading-relaxed text-[var(--fg)]">{plan.summary}</p>
             {plan.warning ? (
@@ -279,65 +236,46 @@ function DetailPanel({
             ) : null}
           </div>
 
-          <div className="grid gap-5 lg:grid-cols-2">
-            <div>
-              <p className="font-medium text-[var(--fg)]">定义段草稿</p>
-              <p className="mt-1 leading-relaxed text-[var(--muted)]">
-                {plan.definitionBlock}
+          {plan.sections.map((s) => (
+            <div key={s.heading}>
+              <p className="font-medium text-[var(--fg)]">{s.heading}</p>
+              <p className="mt-1 whitespace-pre-wrap leading-relaxed text-[var(--muted)]">
+                {s.body}
               </p>
             </div>
-            <div>
-              <p className="font-medium text-[var(--fg)]">FAQ 草稿</p>
-              <ul className="mt-2 space-y-2">
-                {plan.faq.map((f) => (
-                  <li key={f.question}>
-                    <p className="font-medium text-[var(--fg)]">Q: {f.question}</p>
-                    <p className="text-[var(--muted)]">A: {f.answer}</p>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
+          ))}
 
           <div className="grid gap-5 lg:grid-cols-2">
+            {plan.copyBlocks.map((b) => (
+              <div key={b.label}>
+                <p className="font-medium text-[var(--fg)]">{b.label}</p>
+                <p className="mt-1 whitespace-pre-wrap text-[var(--muted)]">
+                  {b.content}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          {plan.schemaSnippet ? (
             <div>
-              <p className="font-medium text-[var(--fg)]">Schema 片段</p>
+              <p className="font-medium text-[var(--fg)]">schema</p>
               <pre className="mt-1 overflow-x-auto whitespace-pre-wrap break-words rounded-lg bg-[var(--surface-2)] p-3 text-xs text-[var(--muted)]">
                 {plan.schemaSnippet}
               </pre>
             </div>
-            {plan.llmsTxtSnippet ? (
-              <div>
-                <p className="font-medium text-[var(--fg)]">llms.txt 草稿</p>
-                <pre className="mt-1 overflow-x-auto whitespace-pre-wrap break-words rounded-lg bg-[var(--surface-2)] p-3 text-xs text-[var(--muted)]">
-                  {plan.llmsTxtSnippet}
-                </pre>
-              </div>
-            ) : (
-              <div>
-                <p className="font-medium text-[var(--fg)]">验收清单</p>
-                <ul className="mt-2 list-disc space-y-1 pl-5 text-[var(--muted)]">
-                  {plan.checklist.map((t) => (
-                    <li key={t}>{t}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
+          ) : null}
 
           {plan.llmsTxtSnippet ? (
             <div>
-              <p className="font-medium text-[var(--fg)]">验收清单</p>
-              <ul className="mt-2 list-disc space-y-1 pl-5 text-[var(--muted)]">
-                {plan.checklist.map((t) => (
-                  <li key={t}>{t}</li>
-                ))}
-              </ul>
+              <p className="font-medium text-[var(--fg)]">llms.txt</p>
+              <pre className="mt-1 overflow-x-auto whitespace-pre-wrap break-words rounded-lg bg-[var(--surface-2)] p-3 text-xs text-[var(--muted)]">
+                {plan.llmsTxtSnippet}
+              </pre>
             </div>
           ) : null}
 
           <div>
-            <p className="font-medium text-[var(--fg)]">执行步骤</p>
+            <p className="font-medium text-[var(--fg)]">steps</p>
             <ol className="mt-2 grid gap-3 sm:grid-cols-2">
               {plan.steps.map((s) => (
                 <li
@@ -351,6 +289,15 @@ function DetailPanel({
                 </li>
               ))}
             </ol>
+          </div>
+
+          <div>
+            <p className="font-medium text-[var(--fg)]">checklist</p>
+            <ul className="mt-2 list-disc space-y-1 pl-5 text-[var(--muted)]">
+              {plan.checklist.map((t) => (
+                <li key={t}>{t}</li>
+              ))}
+            </ul>
           </div>
         </div>
       ) : null}
@@ -431,7 +378,7 @@ export function GeoClient({ initialUrl }: { initialUrl: string | null }) {
   return (
     <PageShell
       title="GEO"
-      description="生成式引擎可见性：答案块、FAQ/Schema、实体、AI bot / llms.txt 等 Readiness 信号。"
+      description="生成式引擎可见性：先抓取 URL 内容，再由模型判定页面用途与缺口（非写死清单）。"
     >
       {!siteUrl ? (
         <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface)] px-6 py-16 text-center">
@@ -453,10 +400,10 @@ export function GeoClient({ initialUrl }: { initialUrl: string | null }) {
               <p className="mt-1 break-all font-medium text-[var(--fg)]">{siteUrl}</p>
               {data ? (
                 <p className="mt-1 text-xs text-[var(--muted)]">
-                  Readiness 规则评分
-                  {fromCache ? " · 缓存" : ""}
+                  {data.model ? `model ${data.model}` : "structural only"}
+                  {fromCache ? " · cache" : ""}
                   {data.fetchedUrl && data.fetchedUrl !== data.url
-                    ? ` · 抓取 ${data.fetchedUrl}`
+                    ? ` · fetched ${data.fetchedUrl}`
                     : ""}
                 </p>
               ) : null}
@@ -507,31 +454,27 @@ export function GeoClient({ initialUrl }: { initialUrl: string | null }) {
 
           {loading && !data ? (
             <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface)] px-6 py-16 text-center text-sm text-[var(--muted)]">
-              正在抓取页面并评估 GEO Readiness…
+              正在抓取页面并由模型判定 GEO…
             </div>
           ) : null}
 
           {data ? (
             <div className="space-y-5">
-              {/* Overview: score + breakdown + access — all visible */}
               <div className="grid gap-5 lg:grid-cols-[12rem_minmax(0,1.2fr)_minmax(0,1fr)]">
                 <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-5 py-5">
                   <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
-                    GEO 总分
+                    GEO score
                   </p>
                   <p
                     className={`mt-2 text-5xl font-semibold ${scoreColor(data.score)}`}
                   >
                     {data.score}
                   </p>
-                  <p className="mt-2 text-sm text-[var(--muted)]">
-                    Readiness（非引用实测）
-                  </p>
                 </div>
 
                 <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-5 py-5">
                   <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
-                    分项得分
+                    breakdown
                   </p>
                   <div className="mt-4">
                     <BreakdownBars breakdown={data.breakdown} />
@@ -540,29 +483,22 @@ export function GeoClient({ initialUrl }: { initialUrl: string | null }) {
 
                 <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-5 py-5 text-sm">
                   <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
-                    站点级 AI 访问
+                    site access
                   </p>
                   <dl className="mt-3 space-y-3">
                     <div>
-                      <dt className="text-[var(--muted)]">robots AI bot</dt>
+                      <dt className="text-[var(--muted)]">robots</dt>
                       <dd className="mt-0.5 font-medium text-[var(--fg)]">
                         {data.access.aiBotPolicy}
                       </dd>
                       <dd className="mt-1 break-words text-[var(--muted)]">
                         {data.access.aiBotSummary}
                       </dd>
-                      <dd className="mt-1 break-all font-mono text-xs text-[var(--muted)]">
-                        {data.access.robotsUrl}
-                        {data.access.robotsOk ? "" : "（读取失败）"}
-                      </dd>
                     </div>
                     <div>
                       <dt className="text-[var(--muted)]">llms.txt</dt>
                       <dd className="mt-0.5 font-medium text-[var(--fg)]">
-                        {data.access.llmsTxtPresent ? "已发现" : "未发现"}
-                      </dd>
-                      <dd className="mt-1 break-all font-mono text-xs text-[var(--muted)]">
-                        {data.access.llmsTxtUrl}
+                        {data.access.llmsTxtPresent ? "found" : "missing"}
                       </dd>
                       {data.access.llmsTxtPreview ? (
                         <dd className="mt-2 whitespace-pre-wrap break-words rounded-lg bg-[var(--surface-2)] p-2 text-xs text-[var(--muted)]">
@@ -574,112 +510,66 @@ export function GeoClient({ initialUrl }: { initialUrl: string | null }) {
                 </div>
               </div>
 
-              {/* Page signals — previously hidden */}
               <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-5 py-5">
                 <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
-                  内容判定 → 期望 → 缺口
+                  content judgment
                 </p>
                 <div className="mt-3 space-y-2 text-sm">
                   <p className="text-[var(--fg)]">
-                    <span className="text-[var(--muted)]">页面类型：</span>
-                    {pageKindLabel(data.page.pageKind)}
+                    <span className="text-[var(--muted)]">pageKind：</span>
+                    {data.page.pageKindLabel}
+                    <span className="ml-2 font-mono text-xs text-[var(--muted)]">
+                      ({data.page.pageKind})
+                    </span>
                   </p>
-                  {data.page.pageKindReason ? (
-                    <p className="text-[var(--muted)]">{data.page.pageKindReason}</p>
-                  ) : null}
-                  {data.page.expectations ? (
+                  <p className="text-[var(--muted)]">{data.page.pageKindReason}</p>
+                  {data.page.expectationLabels.length > 0 ? (
                     <p className="text-[var(--muted)]">
-                      本页期望：
-                      {[
-                        data.page.expectations.needsDefinition ? "定义/简介" : null,
-                        data.page.expectations.needsFaq ? "FAQ" : null,
-                        data.page.expectations.needsHowTo ? "HowTo" : null,
-                        data.page.expectations.needsComparison ? "对比表" : null,
-                        data.page.expectations.needsAuthorDate ? "作者/日期" : null,
-                        data.page.expectations.needsProductSchema
-                          ? "产品 Schema"
-                          : null,
-                        data.page.expectations.needsOrgOrPerson
-                          ? "Person/Org 实体"
-                          : null,
-                      ]
-                        .filter(Boolean)
-                        .join(" · ") || "站点级访问性"}
-                      {!data.page.expectations.needsFaq
-                        ? "（不强制 FAQ）"
-                        : ""}
+                      expectations：{data.page.expectationLabels.join(" · ")}
                     </p>
                   ) : null}
                   {data.page.title ? (
                     <p className="text-[var(--fg)]">
-                      <span className="text-[var(--muted)]">Title：</span>
+                      <span className="text-[var(--muted)]">title：</span>
                       {data.page.title}
                     </p>
                   ) : null}
                   {data.page.h1.length > 0 ? (
                     <p className="text-[var(--fg)]">
-                      <span className="text-[var(--muted)]">H1：</span>
+                      <span className="text-[var(--muted)]">h1：</span>
                       {data.page.h1.join(" / ")}
                     </p>
                   ) : null}
                   {data.page.description ? (
                     <p className="text-[var(--muted)]">{data.page.description}</p>
                   ) : null}
-                </div>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <SignalChip
-                    ok={data.page.flags.hasDefinitionCue}
-                    label="定义线索"
-                  />
-                  {data.page.expectations?.needsFaq ? (
-                    <>
-                      <SignalChip
-                        ok={data.page.flags.hasFaqHeading}
-                        label="FAQ 标题"
-                      />
-                      <SignalChip
-                        ok={data.page.flags.hasFaqSchema}
-                        label="FAQ Schema"
-                      />
-                    </>
-                  ) : null}
-                  <SignalChip
-                    ok={Boolean(data.page.flags.hasPersonSchema)}
-                    label="Person"
-                  />
-                  <SignalChip ok={data.page.flags.hasOrgSchema} label="Organization" />
-                  {data.page.expectations?.needsProductSchema ? (
-                    <SignalChip
-                      ok={data.page.flags.hasProductSchema}
-                      label="Product/App"
-                    />
-                  ) : null}
-                  {data.page.expectations?.needsAuthorDate ? (
-                    <>
-                      <SignalChip ok={data.page.flags.hasAuthor} label="作者" />
-                      <SignalChip
-                        ok={data.page.flags.hasDateModified}
-                        label="更新日期"
-                      />
-                    </>
-                  ) : null}
-                  {data.page.expectations?.needsComparison ? (
-                    <SignalChip ok={data.page.flags.hasTable} label="表格" />
+                  {data.page.schemaTypes.length > 0 ? (
+                    <p className="font-mono text-xs text-[var(--muted)]">
+                      schema：{data.page.schemaTypes.join(", ")}
+                    </p>
                   ) : null}
                 </div>
+                {data.page.signalChips.length > 0 ? (
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {data.page.signalChips.map((chip) => (
+                      <SignalChip
+                        key={chip.key}
+                        ok={chip.ok}
+                        label={chip.label}
+                      />
+                    ))}
+                  </div>
+                ) : null}
               </div>
 
-              {/* Opportunities + detail: stack so nothing is clipped */}
               <div>
-                <div className="mb-3 flex items-end justify-between gap-3">
-                  <div>
-                    <h3 className="text-base font-semibold text-[var(--fg)]">
-                      GEO 机会
-                    </h3>
-                    <p className="mt-0.5 text-sm text-[var(--muted)]">
-                      共 {data.items.length} 项 · 点击查看详情并生成方案
-                    </p>
-                  </div>
+                <div className="mb-3">
+                  <h3 className="text-base font-semibold text-[var(--fg)]">
+                    GEO opportunities
+                  </h3>
+                  <p className="mt-0.5 text-sm text-[var(--muted)]">
+                    {data.items.length} items · from content analysis
+                  </p>
                 </div>
 
                 {data.items.length > 0 ? (
@@ -695,7 +585,7 @@ export function GeoClient({ initialUrl }: { initialUrl: string | null }) {
                   </div>
                 ) : (
                   <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface)] px-6 py-16 text-center text-sm text-[var(--muted)]">
-                    未发现明显 GEO 缺口（或信号已较完整）。
+                    No gaps returned for this URL.
                   </div>
                 )}
               </div>

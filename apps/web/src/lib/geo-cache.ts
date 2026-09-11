@@ -6,13 +6,24 @@ export type GeoBreakdown = {
   entity: number;
 };
 
+export type GeoMissingItem = {
+  code: string;
+  label: string;
+};
+
+export type GeoSignalChip = {
+  key: string;
+  label: string;
+  ok: boolean;
+};
+
 export type GeoOpportunity = {
   id: string;
   type: "geo_readiness" | "geo_asset";
   scope: "page" | "site";
   title: string;
   page: string;
-  missing: string[];
+  missing: GeoMissingItem[];
   potential: number;
   rationale: string;
   actions: string[];
@@ -24,6 +35,7 @@ export type GeoResponse = {
   generatedAt: string;
   score: number;
   breakdown: GeoBreakdown;
+  model: string | null;
   access: {
     robotsUrl: string;
     robotsOk: boolean;
@@ -37,33 +49,12 @@ export type GeoResponse = {
     title: string | null;
     description: string | null;
     h1: string[];
-    pageKind?:
-      | "home_portfolio"
-      | "product"
-      | "article"
-      | "docs"
-      | "landing";
-    pageKindReason?: string;
-    expectations?: {
-      needsFaq: boolean;
-      needsDefinition: boolean;
-      needsHowTo: boolean;
-      needsComparison: boolean;
-      needsAuthorDate: boolean;
-      needsProductSchema: boolean;
-      needsOrgOrPerson: boolean;
-    };
-    flags: {
-      hasFaqHeading: boolean;
-      hasDefinitionCue: boolean;
-      hasFaqSchema: boolean;
-      hasOrgSchema: boolean;
-      hasProductSchema: boolean;
-      hasPersonSchema?: boolean;
-      hasAuthor: boolean;
-      hasDateModified: boolean;
-      hasTable: boolean;
-    };
+    pageKind: string;
+    pageKindLabel: string;
+    pageKindReason: string;
+    expectationLabels: string[];
+    signalChips: GeoSignalChip[];
+    schemaTypes: string[];
   };
   items: GeoOpportunity[];
   warning: string | null;
@@ -74,9 +65,9 @@ export type GeoPlan = {
   title: string;
   page: string;
   summary: string;
-  definitionBlock: string;
-  faq: Array<{ question: string; answer: string }>;
-  schemaSnippet: string;
+  sections: Array<{ heading: string; body: string }>;
+  copyBlocks: Array<{ label: string; content: string }>;
+  schemaSnippet: string | null;
   llmsTxtSnippet: string | null;
   steps: Array<{ order: number; title: string; content: string }>;
   checklist: string[];
@@ -85,7 +76,7 @@ export type GeoPlan = {
   warning: string | null;
 };
 
-const CACHE_KEY = "webagent:geo-cache:v3";
+const CACHE_KEY = "webagent:geo-cache:v4";
 const memory = new Map<string, { savedAt: number; data: GeoResponse }>();
 
 function readStore(): Record<string, { savedAt: number; data: GeoResponse }> {

@@ -14,10 +14,17 @@ const bodySchema = z.object({
   opportunity: z.object({
     id: z.string().min(1),
     type: z.enum(["geo_readiness", "geo_asset"]),
-    scope: z.enum(["page", "site"]).optional(),
+    scope: z.enum(["page", "site"]).default("page"),
     title: z.string().min(1),
     page: z.string().min(1),
-    missing: z.array(z.string()),
+    missing: z
+      .array(
+        z.object({
+          code: z.string(),
+          label: z.string(),
+        }),
+      )
+      .min(1),
     potential: z.number(),
     rationale: z.string(),
     actions: z.array(z.string()),
@@ -37,10 +44,10 @@ export async function POST(request: Request) {
   }
 
   try {
-    const plan = await generateGeoPlan(site.url, {
-      ...parsedBody.data.opportunity,
-      scope: parsedBody.data.opportunity.scope ?? "page",
-    });
+    const plan = await generateGeoPlan(
+      site.url,
+      parsedBody.data.opportunity,
+    );
     return NextResponse.json(plan);
   } catch (err) {
     const message = err instanceof Error ? err.message : "生成 GEO 方案失败";

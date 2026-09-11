@@ -1,16 +1,16 @@
 import { fetchText } from "@/server/http/fetch";
 import {
-  buildGeoOpportunities,
-  expectationsFor,
-  extractGeoPageSignals,
-  overallGeoScore,
+  extractStructuralSignals,
   parseRobotsAiPolicy,
-  scoreGeoBreakdown,
+  type GeoSiteAccess,
+  type GeoStructuralSignals,
+} from "@/server/geo/extract";
+import {
+  analyzeGeoWithLlm,
   type GeoBreakdown,
   type GeoOpportunity,
-  type GeoPageSignals,
-  type GeoSiteAccess,
-} from "@/server/geo/readiness";
+  type GeoSignalChip,
+} from "@/server/geo/llm-analyze";
 
 export type GeoAnalysis = {
   url: string;
@@ -19,32 +19,17 @@ export type GeoAnalysis = {
   score: number;
   breakdown: GeoBreakdown;
   access: GeoSiteAccess;
+  model: string | null;
   page: {
     title: string | null;
     description: string | null;
     h1: string[];
-    pageKind: GeoPageSignals["pageKind"];
+    pageKind: string;
+    pageKindLabel: string;
     pageKindReason: string;
-    expectations: {
-      needsFaq: boolean;
-      needsDefinition: boolean;
-      needsHowTo: boolean;
-      needsComparison: boolean;
-      needsAuthorDate: boolean;
-      needsProductSchema: boolean;
-      needsOrgOrPerson: boolean;
-    };
-    flags: {
-      hasFaqHeading: boolean;
-      hasDefinitionCue: boolean;
-      hasFaqSchema: boolean;
-      hasOrgSchema: boolean;
-      hasProductSchema: boolean;
-      hasPersonSchema: boolean;
-      hasAuthor: boolean;
-      hasDateModified: boolean;
-      hasTable: boolean;
-    };
+    expectationLabels: string[];
+    signalChips: GeoSignalChip[];
+    schemaTypes: string[];
   };
   items: GeoOpportunity[];
   warning: string | null;
@@ -65,7 +50,7 @@ async function fetchSiteAccess(siteUrl: string): Promise<GeoSiteAccess> {
   ]);
 
   let aiBotPolicy: GeoSiteAccess["aiBotPolicy"] = "unknown";
-  let aiBotSummary = "未能读取 robots.txt，AI bot 策略未知。";
+  let aiBotSummary = "robots.txt unread; AI bot policy unknown";
   if (robots.ok) {
     const parsed = parseRobotsAiPolicy(robots.text);
     aiBotPolicy = parsed.policy;
@@ -103,51 +88,48 @@ export async function analyzeGeo(siteUrl: string): Promise<GeoAnalysis> {
   }
 
   const fetchedUrl = pageRes.finalUrl || siteUrl;
-  const signals: GeoPageSignals = extractGeoPageSignals(fetchedUrl, pageRes.text);
+  const signals: GeoStructuralSignals = extractStructuralSignals(
+    fetchedUrl,
+    pageRes.text,
+  );
   const access = await fetchSiteAccess(siteUrl);
-  const breakdown = scoreGeoBreakdown(signals, access);
-  const score = overallGeoScore(breakdown);
 
-  // Prefer the URL the user asked to analyze (e.g. /en), even if the
-  // final fetch redirected to /. Site-level items use their own paths.
   const requestedPath = pathOf(siteUrl);
   const fetchedPath = pathOf(fetchedUrl);
   const pagePath = requestedPath !== "/" ? requestedPath : fetchedPath;
 
-  const items = buildGeoOpportunities(signals, access, breakdown, { pagePath });
+  const llm = await analyzeGeoWithLlm(siteUrl, pagePath, signals, access);
 
-  const warning =
-    "流程：抓取 URL 内容 → 判定页面类型 → 按类型期望检查缺口 → 评分。分数是 GEO Readiness（非引用实测）。V1 只分析你输入的这一页。";
-
-  const expectations = expectationsFor(signals.pageKind);
+  const warningParts = [
+    "Pipeline: fetch URL → structural extract → LLM content judgment → gaps.",
+    "Scores are GEO Readiness, not live AI citation.",
+    "V1 analyzes the URL you entered only.",
+  ];
+  if (llm.warning) warningParts.unshift(llm.warning);
 
   return {
     url: siteUrl,
     fetchedUrl,
     generatedAt: new Date().toISOString(),
-    score,
-    breakdown,
+    score: llm.score,
+    breakdown: llm.breakdown,
     access,
+    model: llm.model,
     page: {
       title: signals.title,
       description: signals.description,
       h1: signals.h1,
-      pageKind: signals.pageKind,
-      pageKindReason: signals.pageKindReason,
-      expectations,
-      flags: {
-        hasFaqHeading: signals.hasFaqHeading,
-        hasDefinitionCue: signals.hasDefinitionCue,
-        hasFaqSchema: signals.hasFaqSchema,
-        hasOrgSchema: signals.hasOrgSchema,
-        hasProductSchema: signals.hasProductSchema,
-        hasPersonSchema: signals.hasPersonSchema,
-        hasAuthor: signals.hasAuthor,
-        hasDateModified: signals.hasDateModified,
-        hasTable: signals.hasTable,
-      },
+      pageKind: llm.pageKind,
+      pageKindLabel: llm.pageKindLabel,
+      pageKindReason: llm.pageKindReason,
+      expectationLabels: llm.expectationLabels,
+      signalChips: llm.signalChips,
+      schemaTypes: signals.schemaTypes,
     },
-    items,
-    warning,
+    items: llm.items,
+    warning: warningParts.join(" "),
   };
 }
+
+// Re-export types used by API/plan
+export type { GeoOpportunity, GeoBreakdown, GeoSignalChip };
