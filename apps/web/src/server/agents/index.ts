@@ -4,4 +4,13 @@
 export { composeDailyAdvice } from "@/server/agents/advice";
 export { generateKeywordActionPlan } from "@/server/agents/action-plan";
 export { generateAdviceActionPlan } from "@/server/agents/advice-plan";
+export { runAnalyticsAgent } from "@/server/agents/analytics";
+export {
+  runAgentTools,
+  toolReadPage,
+  toolReadGsc,
+  toolReadGa,
+  toolReadAudit,
+  toolReadOpportunities,
+} from "@/server/agents/tools";
 export type { AdviceContext } from "@/server/agents/advice-types";

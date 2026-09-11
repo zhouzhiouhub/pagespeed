@@ -60,7 +60,10 @@ export async function GET(request: Request) {
           opportunityCount: gsc.opportunities.length,
         }
       : null,
-    ga4,
+    ga4: {
+      ...ga4,
+      topPages: ga4.topPages ?? [],
+    },
     advice: advice
       ? {
           runId: advice.runId,

@@ -1,11 +1,15 @@
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 import { applyProxyDispatcher } from "@/server/http/proxy-bootstrap";
-import { proxiedFetch } from "@/server/http/fetch";
+import {
+  refreshGoogleAccessToken,
+  saveGoogleTokens,
+} from "@/server/google/tokens";
 
 applyProxyDispatcher();
 
 const GSC_SCOPE = "https://www.googleapis.com/auth/webmasters.readonly";
+const GA4_SCOPE = "https://www.googleapis.com/auth/analytics.readonly";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
@@ -14,7 +18,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
       authorization: {
         params: {
-          scope: `openid email profile ${GSC_SCOPE}`,
+          scope: `openid email profile ${GSC_SCOPE} ${GA4_SCOPE}`,
           access_type: "offline",
           prompt: "consent",
           include_granted_scopes: "true",
@@ -24,12 +28,25 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   ],
   session: { strategy: "jwt" },
   callbacks: {
-    async jwt({ token, account }) {
+    async jwt({ token, account, profile }) {
       if (account) {
         token.accessToken = account.access_token;
         token.refreshToken = account.refresh_token ?? token.refreshToken;
         token.expiresAt = account.expires_at;
         token.scope = account.scope;
+        // Persist for cron / offline jobs (single-user V1)
+        await saveGoogleTokens({
+          email:
+            typeof profile?.email === "string"
+              ? profile.email
+              : typeof token.email === "string"
+                ? token.email
+                : null,
+          refreshToken: account.refresh_token ?? null,
+          accessToken: account.access_token ?? null,
+          expiresAt: account.expires_at ?? null,
+          scope: account.scope ?? null,
+        });
       }
 
       const expiresAt = typeof token.expiresAt === "number" ? token.expiresAt : 0;
@@ -45,59 +62,37 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (refreshed.refresh_token) {
           token.refreshToken = refreshed.refresh_token;
         }
+        await saveGoogleTokens({
+          accessToken: refreshed.access_token,
+          expiresAt: token.expiresAt,
+          refreshToken: refreshed.refresh_token ?? String(token.refreshToken),
+          scope: typeof token.scope === "string" ? token.scope : null,
+        });
+        delete token.error;
       } catch {
         token.error = "RefreshAccessTokenError";
       }
       return token;
     },
     async session({ session, token }) {
-      session.accessToken = typeof token.accessToken === "string" ? token.accessToken : undefined;
+      session.accessToken =
+        typeof token.accessToken === "string" ? token.accessToken : undefined;
       session.error = typeof token.error === "string" ? token.error : undefined;
-      session.hasGscScope =
-        typeof token.scope === "string"
-          ? token.scope.includes("webmasters")
-          : Boolean(token.accessToken);
+      const scope = typeof token.scope === "string" ? token.scope : "";
+      session.hasGscScope = /webmasters|searchconsole/i.test(scope);
+      session.hasGa4Scope = /analytics/i.test(scope);
       return session;
     },
   },
   trustHost: true,
 });
 
-async function refreshGoogleAccessToken(refreshToken: string) {
-  applyProxyDispatcher();
-  const body = new URLSearchParams({
-    client_id: process.env.GOOGLE_CLIENT_ID ?? "",
-    client_secret: process.env.GOOGLE_CLIENT_SECRET ?? "",
-    grant_type: "refresh_token",
-    refresh_token: refreshToken,
-  });
-
-  const res = await proxiedFetch("https://oauth2.googleapis.com/token", {
-    method: "POST",
-    headers: { "content-type": "application/x-www-form-urlencoded" },
-    body,
-  });
-  const data = (await res.json()) as {
-    access_token?: string;
-    expires_in?: number;
-    refresh_token?: string;
-    error?: string;
-  };
-  if (!res.ok || !data.access_token || !data.expires_in) {
-    throw new Error(data.error ?? "Failed to refresh Google token");
-  }
-  return {
-    access_token: data.access_token,
-    expires_in: data.expires_in,
-    refresh_token: data.refresh_token,
-  };
-}
-
 declare module "next-auth" {
   interface Session {
     accessToken?: string;
     error?: string;
     hasGscScope?: boolean;
+    hasGa4Scope?: boolean;
   }
 }
 

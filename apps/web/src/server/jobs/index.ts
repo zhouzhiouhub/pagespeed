@@ -1,6 +1,23 @@
 import { composeDailyAdvice } from "@/server/agents/advice";
 import { enqueueCrawl } from "@/server/crawler";
-import { readGscStore } from "@/server/gsc/store";
+import { syncGscProperty } from "@/server/gsc/client";
+import { readGscStore, writeGscStore } from "@/server/gsc/store";
+import { runGa4PageReport } from "@/server/ga4/client";
+import { readGa4Store, writeGa4Store } from "@/server/ga4/store";
+import { getGoogleAccessToken } from "@/server/google/tokens";
+import {
+  persistGa4DailyRows,
+  persistGscDailyRows,
+} from "@/server/insights/metrics-persist";
+import {
+  draftsFromCrawl,
+  draftsFromGsc,
+  draftsFromKeywordOps,
+  persistOpportunities,
+} from "@/server/insights/opportunities-store";
+import { buildKeywordOpportunities } from "@/server/keywords/opportunities";
+import { extractPageSignals } from "@/server/keywords/extract";
+import { fetchText } from "@/server/http/fetch";
 import { ensureSite, persistCrawlResult } from "@/server/sites/repo";
 import { siteKeyFromUrl } from "@/server/sites/file-store";
 
@@ -43,6 +60,7 @@ async function runCrawlFull(payload: Record<string, unknown>): Promise<JobResult
     maxPages,
   });
   const persisted = await persistCrawlResult(site, result);
+  const opp = await persistOpportunities(seedUrl, draftsFromCrawl(result));
   return {
     accepted: true,
     name: "crawl.full",
@@ -56,6 +74,7 @@ async function runCrawlFull(payload: Record<string, unknown>): Promise<JobResult
       issues: result.issues.length,
       scores: result.scores,
       warning: result.warning,
+      opportunitiesPersist: opp,
     },
   };
 }
@@ -89,7 +108,6 @@ async function runAdviceDaily(
 }
 
 async function runSyncGsc(payload: Record<string, unknown>): Promise<JobResult> {
-  // Token-bound sync stays on /api/gsc/sync; cron refreshes from existing store snapshot.
   const store = await readGscStore();
   const property =
     (typeof payload.property === "string" && payload.property) ||
@@ -99,37 +117,166 @@ async function runSyncGsc(payload: Record<string, unknown>): Promise<JobResult> 
       accepted: true,
       name: "sync.gsc",
       ok: false,
-      detail: { hint: "Connect GSC via UI first; cron cannot refresh without OAuth session." },
+      detail: {
+        hint: "Connect GSC via UI first and select a property.",
+      },
       error: "no GSC property selected",
     };
   }
+
+  const token = await getGoogleAccessToken({ requireScope: "gsc" });
+  if (!token.accessToken) {
+    return {
+      accepted: true,
+      name: "sync.gsc",
+      ok: false,
+      detail: {
+        lastSyncedAt: store.lastSyncedAt,
+        opportunityCount: store.opportunities.length,
+      },
+      error: token.error ?? "no offline google token",
+    };
+  }
+
+  const siteUrl =
+    (typeof payload.url === "string" && payload.url) || store.siteUrl;
+  const synced = await syncGscProperty(token.accessToken, property);
+  const next = {
+    selectedProperty: property,
+    siteUrl,
+    lastSyncedAt: new Date().toISOString(),
+    rows: synced.rows,
+    opportunities: synced.opportunities,
+  };
+  await writeGscStore(next);
+
+  let metricsPersist = { rows: 0, persistedTo: "none" as const };
+  let oppPersist = { count: 0, persistedTo: "file" as const };
+  if (siteUrl) {
+    metricsPersist = await persistGscDailyRows(siteUrl, next);
+    oppPersist = await persistOpportunities(siteUrl, draftsFromGsc(next));
+  }
+
   return {
     accepted: true,
     name: "sync.gsc",
     ok: true,
     detail: {
-      mode: "snapshot",
+      mode: "live",
       property,
-      siteUrl: store.siteUrl,
-      lastSyncedAt: store.lastSyncedAt,
-      rowCount: store.rows.length,
-      opportunityCount: store.opportunities.length,
-      note: "Full re-sync requires user OAuth; use POST /api/gsc/sync while signed in.",
+      siteUrl,
+      lastSyncedAt: next.lastSyncedAt,
+      rowCount: next.rows.length,
+      opportunityCount: next.opportunities.length,
+      tokenSource: token.source,
+      metricsPersist,
+      opportunitiesPersist: oppPersist,
     },
   };
 }
 
 async function runSyncGa4(payload: Record<string, unknown>): Promise<JobResult> {
-  void payload;
+  const store = await readGa4Store();
+  const propertyId =
+    (typeof payload.propertyId === "string" && payload.propertyId) ||
+    store.selectedPropertyId;
+  if (!propertyId) {
+    return {
+      accepted: true,
+      name: "sync.ga4",
+      ok: false,
+      detail: { hint: "Select a GA4 property in Dashboard first." },
+      error: "no GA4 property selected",
+    };
+  }
+
+  const token = await getGoogleAccessToken({ requireScope: "ga4" });
+  if (!token.accessToken) {
+    return {
+      accepted: true,
+      name: "sync.ga4",
+      ok: false,
+      detail: {},
+      error: token.error ?? "no offline google token",
+    };
+  }
+
+  const siteUrl =
+    (typeof payload.url === "string" && payload.url) || store.siteUrl;
+  const report = await runGa4PageReport(token.accessToken, propertyId, 7);
+  const next = {
+    selectedPropertyId: propertyId,
+    selectedPropertyName: store.selectedPropertyName,
+    siteUrl,
+    lastSyncedAt: new Date().toISOString(),
+    sessions7d: report.sessions7d,
+    users7d: report.users7d,
+    rows: report.rows,
+    topPages: report.topPages,
+  };
+  await writeGa4Store(next);
+
+  const metricsPersist = siteUrl
+    ? await persistGa4DailyRows(siteUrl, next)
+    : { rows: 0, persistedTo: "none" as const };
+
   return {
     accepted: true,
     name: "sync.ga4",
-    ok: false,
+    ok: true,
     detail: {
-      connected: false,
-      note: "GA4 OAuth + Data API wiring is scaffolded; connect GA4 to enable daily sync.",
+      propertyId,
+      siteUrl,
+      lastSyncedAt: next.lastSyncedAt,
+      sessions7d: next.sessions7d,
+      users7d: next.users7d,
+      rowCount: next.rows.length,
+      tokenSource: token.source,
+      metricsPersist,
     },
-    error: "ga4 not connected",
+  };
+}
+
+async function runInsightsOpportunities(
+  payload: Record<string, unknown>,
+): Promise<JobResult> {
+  const url = String(payload.url ?? "");
+  if (!url) {
+    return {
+      accepted: true,
+      name: "insights.opportunities",
+      ok: false,
+      detail: {},
+      error: "missing url",
+    };
+  }
+
+  const drafts = [];
+  const gsc = await readGscStore();
+  if (gsc.opportunities.length) {
+    drafts.push(...draftsFromGsc(gsc));
+  }
+
+  try {
+    const page = await fetchText(url, { timeoutMs: 25_000 });
+    if (page.ok) {
+      const signals = extractPageSignals(page.finalUrl || url, page.text);
+      const kw = await buildKeywordOpportunities(url, signals);
+      drafts.push(...draftsFromKeywordOps(kw.items));
+    }
+  } catch {
+    // ignore page fetch
+  }
+
+  const persisted = await persistOpportunities(url, drafts);
+  return {
+    accepted: true,
+    name: "insights.opportunities",
+    ok: true,
+    detail: {
+      count: persisted.count,
+      persistedTo: persisted.persistedTo,
+    },
   };
 }
 
@@ -157,14 +304,7 @@ export async function enqueueJob(
       case "sync.ga4":
         return await runSyncGa4(payload);
       case "insights.opportunities":
-        return {
-          accepted: true,
-          name,
-          ok: true,
-          detail: {
-            note: "Opportunities are derived on-demand from crawl/GSC/GEO APIs in V1.",
-          },
-        };
+        return await runInsightsOpportunities(payload);
       default:
         return {
           accepted: false,

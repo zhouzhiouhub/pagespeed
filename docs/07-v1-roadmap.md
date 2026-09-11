@@ -78,10 +78,10 @@ V4  + 自动执行 → 监控 → 再策略
 
 ### M2 · Integrations
 
-- [x] Google OAuth（GSC；GA4 骨架/降级 UI）
-- [ ] GSC Search Analytics 日报同步 job（需登录态；cron 可读快照）
-- [ ] GA4 页级日报同步 job
-- [x] Dashboard / Analytics summary API（`/api/dashboard`；GA4 指标待 OAuth）
+- [x] Google OAuth（GSC + GA4 只读；refresh token 落盘供 cron）
+- [x] GSC Search Analytics 同步 job（`sync.gsc`，可用离线 token）
+- [x] GA4 页级同步 job（`sync.ga4`）
+- [x] Dashboard / Analytics summary API（`/api/dashboard` + `/api/analytics`）
 - [x] 未连接时的降级 UI
 
 ### M3 · Insights / Opportunities
@@ -91,12 +91,12 @@ V4  + 自动执行 → 监控 → 再策略
 - [x] **GEO readiness → opportunity**（高价值页缺 FAQ/定义段等）
 - [ ] Tech issue → opportunity 提升（带业务影响过滤：无流量低优）
 - [x] Opportunities API + 关键词/内容/**GEO** 页对接
-- [ ] evidence 落库
+- [x] evidence 落库（文件 + Postgres）
 
 ### M4 · Agents
 
-- [ ] Agent 接口与 tool 层（读 page / gsc / ga）
-- [ ] Analytics Agent：指标 → 叙事
+- [x] Agent 接口与 tool 层（读 page / gsc / ga / audit / opportunities）
+- [x] Analytics Agent：指标 → 叙事
 - [ ] Keyword / SEO / **GEO** / Content 轻量 Agent
 - [x] Orchestrator：每日 Top N 建议（可含 GEO 卡）
 - [x] Action Plan 生成 API + UI 面板（含定义段/FAQ/Schema；Advice 卡可生成）

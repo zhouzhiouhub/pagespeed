@@ -2,6 +2,12 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { syncGscProperty } from "@/server/gsc/client";
 import { readGscStore, writeGscStore } from "@/server/gsc/store";
+import { getGoogleAccessToken } from "@/server/google/tokens";
+import { persistGscDailyRows } from "@/server/insights/metrics-persist";
+import {
+  draftsFromGsc,
+  persistOpportunities,
+} from "@/server/insights/opportunities-store";
 import { parseSiteUrl } from "@/lib/url";
 
 export const runtime = "nodejs";
@@ -9,8 +15,18 @@ export const maxDuration = 60;
 
 export async function POST(request: Request) {
   const session = await auth();
-  if (!session?.accessToken) {
-    return NextResponse.json({ error: "未连接 Google 账号" }, { status: 401 });
+  const token = await getGoogleAccessToken({
+    sessionAccessToken: session?.accessToken,
+    requireScope: "gsc",
+  });
+
+  if (!token.accessToken) {
+    return NextResponse.json(
+      {
+        error: token.error ?? "未连接 Google 账号（或 refresh token 不可用）",
+      },
+      { status: 401 },
+    );
   }
 
   const body = (await request.json().catch(() => ({}))) as {
@@ -18,7 +34,8 @@ export async function POST(request: Request) {
     url?: string;
   };
 
-  const property = body.property?.trim();
+  const property =
+    body.property?.trim() || (await readGscStore()).selectedProperty || "";
   if (!property) {
     return NextResponse.json({ error: "缺少 GSC property" }, { status: 400 });
   }
@@ -27,7 +44,7 @@ export async function POST(request: Request) {
   const siteUrl = parsed?.ok ? parsed.url : (await readGscStore()).siteUrl;
 
   try {
-    const synced = await syncGscProperty(session.accessToken, property);
+    const synced = await syncGscProperty(token.accessToken, property);
     const store = {
       selectedProperty: property,
       siteUrl,
@@ -37,6 +54,13 @@ export async function POST(request: Request) {
     };
     await writeGscStore(store);
 
+    let metricsPersist = { rows: 0, persistedTo: "none" as const };
+    let oppPersist = { count: 0, persistedTo: "file" as const };
+    if (siteUrl) {
+      metricsPersist = await persistGscDailyRows(siteUrl, store);
+      oppPersist = await persistOpportunities(siteUrl, draftsFromGsc(store));
+    }
+
     return NextResponse.json({
       ok: true,
       selectedProperty: property,
@@ -44,6 +68,9 @@ export async function POST(request: Request) {
       rowCount: store.rows.length,
       opportunityCount: store.opportunities.length,
       items: store.opportunities,
+      tokenSource: token.source,
+      metricsPersist,
+      opportunitiesPersist: oppPersist,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "GSC 同步失败";

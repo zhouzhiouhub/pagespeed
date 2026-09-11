@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { SiteUrlForm } from "@/components/site-url-form";
+import { Ga4ConnectPanel } from "@/components/ga4-connect-panel";
 import { parseSiteUrl } from "@/lib/url";
 import { readSiteUrl, writeSiteUrl } from "@/lib/site";
 
@@ -30,6 +31,7 @@ type DashboardData = {
     note: string;
     sessions7d: number | null;
     users7d: number | null;
+    topPages?: Array<{ path: string; sessions: number; users?: number }>;
   };
   advice: {
     runId: string;
@@ -40,6 +42,16 @@ type DashboardData = {
   } | null;
 };
 
+type AnalyticsNarrative = {
+  headline: string;
+  summary: string;
+  bullets: string[];
+  risks: string[];
+  nextActions: string[];
+  source: string;
+  warning: string | null;
+};
+
 export function DashboardClient({ initialUrl }: { initialUrl: string | null }) {
   const router = useRouter();
   const [siteUrl, setSiteUrl] = useState<string | null>(initialUrl);
@@ -47,6 +59,8 @@ export function DashboardClient({ initialUrl }: { initialUrl: string | null }) {
   const [loading, setLoading] = useState(false);
   const [crawling, setCrawling] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [analytics, setAnalytics] = useState<AnalyticsNarrative | null>(null);
+  const [analyticsBusy, setAnalyticsBusy] = useState(false);
 
   useEffect(() => {
     if (initialUrl) {
@@ -77,6 +91,23 @@ export function DashboardClient({ initialUrl }: { initialUrl: string | null }) {
       setError("网络错误");
     } finally {
       setLoading(false);
+    }
+  }, []);
+
+  const loadAnalytics = useCallback(async (url: string) => {
+    setAnalyticsBusy(true);
+    try {
+      const res = await fetch(`/api/analytics?url=${encodeURIComponent(url)}`);
+      const json = (await res.json()) as AnalyticsNarrative & { error?: string };
+      if (!res.ok) {
+        setError(json.error ?? "Analytics Agent 失败");
+        return;
+      }
+      setAnalytics(json);
+    } catch {
+      setError("Analytics 请求失败");
+    } finally {
+      setAnalyticsBusy(false);
     }
   }, []);
 
@@ -256,7 +287,11 @@ export function DashboardClient({ initialUrl }: { initialUrl: string | null }) {
             </li>
             <li className="flex justify-between gap-4">
               <span className="text-[var(--muted)]">GA4</span>
-              <span>{data?.integrations.ga4 ? "已连接" : "未连接"}</span>
+              <span>
+                {data?.integrations.ga4
+                  ? `${data.ga4.sessions7d ?? 0} sessions`
+                  : "未连接"}
+              </span>
             </li>
             <li className="flex justify-between gap-4">
               <span className="text-[var(--muted)]">Postgres</span>
@@ -266,8 +301,58 @@ export function DashboardClient({ initialUrl }: { initialUrl: string | null }) {
           {data?.ga4?.note ? (
             <p className="mt-3 text-xs text-[var(--muted)]">{data.ga4.note}</p>
           ) : null}
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Link
+              href={`/keywords?url=${encodeURIComponent(siteUrl)}`}
+              className="text-sm font-medium text-[var(--brand-blue)] hover:underline"
+            >
+              管理 GSC →
+            </Link>
+            <button
+              type="button"
+              disabled={analyticsBusy}
+              onClick={() => void loadAnalytics(siteUrl)}
+              className="text-sm font-medium text-[var(--brand-blue)] hover:underline disabled:opacity-50"
+            >
+              {analyticsBusy ? "生成叙事中…" : "运行 Analytics Agent"}
+            </button>
+          </div>
         </section>
       </div>
+
+      <div className="mt-4">
+        <Ga4ConnectPanel siteUrl={siteUrl} onSynced={() => void load(siteUrl)} />
+      </div>
+
+      {analytics ? (
+        <section className="mt-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-5 py-5">
+          <p className="text-xs text-[var(--muted)]">
+            Analytics Agent · {analytics.source}
+          </p>
+          <h2 className="mt-1 text-lg font-semibold text-[var(--fg)]">
+            {analytics.headline}
+          </h2>
+          <p className="mt-2 text-sm text-[var(--muted)]">{analytics.summary}</p>
+          <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-[var(--fg)]">
+            {analytics.bullets.map((b) => (
+              <li key={b}>{b}</li>
+            ))}
+          </ul>
+          {analytics.nextActions.length ? (
+            <div className="mt-4">
+              <p className="text-sm font-medium text-[var(--fg)]">下一步</p>
+              <ol className="mt-1 list-decimal space-y-1 pl-5 text-sm text-[var(--muted)]">
+                {analytics.nextActions.map((a) => (
+                  <li key={a}>{a}</li>
+                ))}
+              </ol>
+            </div>
+          ) : null}
+          {analytics.warning ? (
+            <p className="mt-3 text-xs text-[#8a5a00]">{analytics.warning}</p>
+          ) : null}
+        </section>
+      ) : null}
 
       <section className="mt-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-5 py-5">
         <div className="flex flex-wrap items-center justify-between gap-3">

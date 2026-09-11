@@ -79,9 +79,12 @@ cd apps/web && npm run dev
 | `/advice` | 今日增长建议 |
 | `/api/health` | 健康检查 |
 | `/api/crawl` | 多页爬取（sitemap + 抽样） |
+| `/api/ga4` | GA4 属性列表 / 同步 |
+| `/api/analytics` | Analytics Agent 叙事 |
+| `/api/opportunities` | 机会列表 / 重建落库 |
 | `/api/cron/run` | 任务入口（crawl / advice.daily / sync.*） |
 
-无 Postgres 时自动降级到 `apps/web/.data/` 文件存储；有 DB 时写入 sites / pages / audits / advice。
+Google 登录会同时申请 GSC + GA4 只读，并持久化 refresh token（`.data/google-tokens.json`），供 cron 离线重拉。若此前已授权，请重新「连接 Google」以补齐 Analytics scope。
 
 ## 仓库结构
 
