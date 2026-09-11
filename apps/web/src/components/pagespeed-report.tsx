@@ -1,6 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useI18n, useT } from "@/components/i18n-provider";
+import { psiLocale } from "@/lib/i18n/locale";
+import type { MessageKey } from "@/lib/i18n/messages";
 import {
   getCachedPsi,
   setCachedPsi,
@@ -24,19 +27,15 @@ function scoreRing(score: number | null): string {
   return "border-[#d93025]";
 }
 
-function kindLabel(kind: PsiOpportunity["kind"]): string {
-  if (kind === "opportunity") return "优化机会";
-  if (kind === "diagnostic") return "诊断";
-  return "未通过";
-}
-
-function formatSavings(ms: number | null): string | null {
-  if (ms === null || ms <= 0) return null;
-  if (ms >= 1000) return `约可节省 ${(ms / 1000).toFixed(1)} s`;
-  return `约可节省 ${ms} ms`;
+function kindLabelKey(kind: PsiOpportunity["kind"]): MessageKey {
+  if (kind === "opportunity") return "pagespeed.kindOpportunity";
+  if (kind === "diagnostic") return "pagespeed.kindDiagnostic";
+  return "pagespeed.kindFail";
 }
 
 export function PagespeedReport({ url }: { url: string }) {
+  const t = useT();
+  const { locale } = useI18n();
   const [strategy, setStrategy] = useState<PsiStrategy>("mobile");
   const [data, setData] = useState<PsiSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -46,6 +45,19 @@ export function PagespeedReport({ url }: { url: string }) {
   useEffect(() => {
     writeSiteUrl(url);
   }, [url]);
+
+  const formatSavings = useCallback(
+    (ms: number | null): string | null => {
+      if (ms === null || ms <= 0) return null;
+      if (ms >= 1000) {
+        return t("pagespeed.saveSeconds", {
+          value: (ms / 1000).toFixed(1),
+        });
+      }
+      return t("pagespeed.saveMs", { value: ms });
+    },
+    [t],
+  );
 
   const load = useCallback(
     async (nextStrategy: PsiStrategy, opts?: { force?: boolean }) => {
@@ -73,23 +85,23 @@ export function PagespeedReport({ url }: { url: string }) {
 
       try {
         const res = await fetch(
-          `/api/pagespeed?url=${encodeURIComponent(url)}&strategy=${nextStrategy}`,
+          `/api/pagespeed?url=${encodeURIComponent(url)}&strategy=${nextStrategy}&locale=${psiLocale(locale)}`,
         );
         const json = (await res.json()) as PsiSummary & { error?: string };
         if (!res.ok) {
-          setError(json.error ?? "分析失败");
+          setError(json.error ?? t("pagespeed.analyzeFailed"));
           return;
         }
         setCachedPsi(url, nextStrategy, json);
         setData(json);
         setFromCache(false);
       } catch {
-        setError("网络错误，请稍后重试");
+        setError(t("common.networkError"));
       } finally {
         setLoading(false);
       }
     },
-    [url],
+    [url, locale, t],
   );
 
   useEffect(() => {
@@ -139,12 +151,18 @@ export function PagespeedReport({ url }: { url: string }) {
           onClick={() => void load(strategy, { force: true })}
           className="rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-sm font-medium text-[var(--fg)] hover:bg-[var(--surface-2)] disabled:opacity-60"
         >
-          {loading ? "刷新中…" : "刷新分析"}
+          {loading
+            ? t("pagespeed.refreshing")
+            : t("pagespeed.refreshAnalysis")}
         </button>
         {loading ? (
-          <p className="text-sm text-[var(--muted)]">正在分析页面性能…</p>
+          <p className="text-sm text-[var(--muted)]">
+            {t("pagespeed.analyzing")}
+          </p>
         ) : fromCache && data ? (
-          <p className="text-sm text-[var(--muted)]">已显示缓存结果，可点刷新获取最新</p>
+          <p className="text-sm text-[var(--muted)]">
+            {t("pagespeed.cachedHint")}
+          </p>
         ) : null}
       </div>
 
@@ -160,14 +178,14 @@ export function PagespeedReport({ url }: { url: string }) {
             onClick={() => void load(strategy, { force: true })}
             className="rounded-md bg-[var(--brand-blue)] px-3 py-1.5 text-sm font-medium text-white disabled:opacity-60"
           >
-            重试分析
+            {t("pagespeed.retryAnalysis")}
           </button>
         </div>
       ) : null}
 
       {loading && !data ? (
         <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface)] px-6 py-16 text-center text-sm text-[var(--muted)]">
-          分析通常需要 15–40 秒，请稍候…
+          {t("pagespeed.waitHint")}
         </div>
       ) : null}
 
@@ -182,12 +200,16 @@ export function PagespeedReport({ url }: { url: string }) {
                 <div
                   className={`flex h-14 w-14 items-center justify-center rounded-full border-4 ${scoreRing(item.score)}`}
                 >
-                  <span className={`text-lg font-semibold ${scoreTone(item.score)}`}>
+                  <span
+                    className={`text-lg font-semibold ${scoreTone(item.score)}`}
+                  >
                     {item.score ?? "—"}
                   </span>
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-[var(--fg)]">{item.title}</p>
+                  <p className="text-sm font-medium text-[var(--fg)]">
+                    {item.title}
+                  </p>
                   <p className="text-xs text-[var(--muted)]">Lighthouse</p>
                 </div>
               </div>
@@ -195,7 +217,9 @@ export function PagespeedReport({ url }: { url: string }) {
           </section>
 
           <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-5 py-5">
-            <h2 className="text-sm font-medium text-[var(--fg)]">核心指标</h2>
+            <h2 className="text-sm font-medium text-[var(--fg)]">
+              {t("pagespeed.coreMetrics")}
+            </h2>
             <dl className="mt-4 grid gap-3 sm:grid-cols-2">
               {data.metrics.map((m) => (
                 <div
@@ -205,7 +229,9 @@ export function PagespeedReport({ url }: { url: string }) {
                   <dt className="text-sm text-[var(--muted)]">{m.title}</dt>
                   <dd
                     className={`text-sm font-medium ${scoreTone(
-                      m.score === null ? null : Math.round((m.score ?? 0) * 100),
+                      m.score === null
+                        ? null
+                        : Math.round((m.score ?? 0) * 100),
                     )}`}
                   >
                     {m.displayValue ?? "—"}
@@ -217,15 +243,19 @@ export function PagespeedReport({ url }: { url: string }) {
 
           <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-5 py-5">
             <div className="flex items-baseline justify-between gap-3">
-              <h2 className="text-sm font-medium text-[var(--fg)]">需要优化的内容</h2>
+              <h2 className="text-sm font-medium text-[var(--fg)]">
+                {t("pagespeed.needOptimize")}
+              </h2>
               <p className="text-xs text-[var(--muted)]">
-                {(data.opportunities ?? data.seoAudits ?? []).length} 项
+                {t("pagespeed.itemCount", {
+                  count: (data.opportunities ?? data.seoAudits ?? []).length,
+                })}
               </p>
             </div>
 
             {grouped.length === 0 ? (
               <p className="mt-3 text-sm text-[var(--muted)]">
-                未发现明显可改进项。
+                {t("pagespeed.noImprovements")}
               </p>
             ) : (
               <div className="mt-4 space-y-6">
@@ -242,7 +272,7 @@ export function PagespeedReport({ url }: { url: string }) {
                         >
                           <div className="flex flex-wrap items-center gap-2">
                             <span className="rounded bg-[var(--accent-soft)] px-1.5 py-0.5 text-[11px] font-medium text-[var(--brand-blue)]">
-                              {kindLabel(a.kind)}
+                              {t(kindLabelKey(a.kind))}
                             </span>
                             {formatSavings(a.savingsMs) ? (
                               <span className="text-[11px] font-medium text-[#c26400]">

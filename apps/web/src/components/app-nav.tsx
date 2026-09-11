@@ -2,16 +2,9 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useI18n } from "@/components/i18n-provider";
 import { readSiteUrl } from "@/lib/site";
-
-const NAV = [
-  { href: "/", label: "Dashboard", withSite: false },
-  { href: "/audit", label: "网站分析", withSite: true },
-  { href: "/keywords", label: "关键词", withSite: true },
-  { href: "/content", label: "内容", withSite: true },
-  { href: "/geo", label: "GEO", withSite: true },
-  { href: "/advice", label: "增长建议", withSite: true },
-] as const;
+import type { Locale } from "@/lib/i18n/locale";
 
 function hostLabel(url: string) {
   try {
@@ -22,11 +15,26 @@ function hostLabel(url: string) {
 }
 
 export function AppNav({ pathname }: { pathname: string }) {
+  const { locale, setLocale, t } = useI18n();
   const [siteUrl, setSiteUrl] = useState<string | null>(null);
 
   useEffect(() => {
     setSiteUrl(readSiteUrl());
   }, [pathname]);
+
+  const nav = [
+    { href: "/", label: t("nav.dashboard"), withSite: false },
+    { href: "/audit", label: t("nav.audit"), withSite: true },
+    { href: "/keywords", label: t("nav.keywords"), withSite: true },
+    { href: "/content", label: t("nav.content"), withSite: true },
+    { href: "/geo", label: t("nav.geo"), withSite: true },
+    { href: "/advice", label: t("nav.advice"), withSite: true },
+  ] as const;
+
+  function switchLocale(next: Locale) {
+    if (next === locale) return;
+    setLocale(next);
+  }
 
   return (
     <header className="border-b border-[var(--border)] bg-[var(--surface)]">
@@ -46,7 +54,7 @@ export function AppNav({ pathname }: { pathname: string }) {
           <span className="font-semibold">Growth Agent</span>
         </Link>
         <nav className="flex flex-1 flex-wrap items-center gap-1 text-sm">
-          {NAV.map((item) => {
+          {nav.map((item) => {
             const href =
               item.withSite && siteUrl
                 ? `${item.href}?url=${encodeURIComponent(siteUrl)}`
@@ -70,12 +78,42 @@ export function AppNav({ pathname }: { pathname: string }) {
             );
           })}
         </nav>
-        <span
-          className="hidden max-w-[12rem] truncate text-xs text-[var(--muted)] sm:inline"
-          title={siteUrl ?? undefined}
-        >
-          {siteUrl ? hostLabel(siteUrl) : "未接入站点"}
-        </span>
+        <div className="flex shrink-0 items-center gap-3">
+          <div
+            className="inline-flex rounded-md border border-[var(--border)] p-0.5 text-xs"
+            role="group"
+            aria-label={t("nav.switchLang")}
+          >
+            <button
+              type="button"
+              onClick={() => switchLocale("zh")}
+              className={
+                locale === "zh"
+                  ? "rounded px-2 py-1 font-medium text-[var(--brand-blue)] bg-[var(--accent-soft)]"
+                  : "rounded px-2 py-1 text-[var(--muted)] hover:text-[var(--fg)]"
+              }
+            >
+              {t("nav.langZh")}
+            </button>
+            <button
+              type="button"
+              onClick={() => switchLocale("en")}
+              className={
+                locale === "en"
+                  ? "rounded px-2 py-1 font-medium text-[var(--brand-blue)] bg-[var(--accent-soft)]"
+                  : "rounded px-2 py-1 text-[var(--muted)] hover:text-[var(--fg)]"
+              }
+            >
+              {t("nav.langEn")}
+            </button>
+          </div>
+          <span
+            className="hidden max-w-[12rem] truncate text-xs text-[var(--muted)] sm:inline"
+            title={siteUrl ?? undefined}
+          >
+            {siteUrl ? hostLabel(siteUrl) : t("nav.noSite")}
+          </span>
+        </div>
       </div>
     </header>
   );

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { runAnalyticsAgent } from "@/server/agents/analytics";
-import { parseSiteUrl } from "@/lib/url";
+import { parseSiteUrl, localeFromRequest, localizedUrlError } from "@/lib/url";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -12,7 +12,7 @@ export async function GET(request: Request) {
   }
   const parsed = parseSiteUrl(url);
   if (!parsed.ok) {
-    return NextResponse.json({ error: parsed.error }, { status: 400 });
+    return NextResponse.json({ error: localizedUrlError(parsed.code, localeFromRequest(request)) }, { status: 400 });
   }
 
   try {

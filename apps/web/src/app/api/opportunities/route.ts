@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { enqueueJob } from "@/server/jobs";
 import { listPersistedOpportunities } from "@/server/insights/opportunities-store";
-import { parseSiteUrl } from "@/lib/url";
+import { parseSiteUrl, localeFromRequest, localizedUrlError } from "@/lib/url";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -13,7 +13,7 @@ export async function GET(request: Request) {
   }
   const parsed = parseSiteUrl(url);
   if (!parsed.ok) {
-    return NextResponse.json({ error: parsed.error }, { status: 400 });
+    return NextResponse.json({ error: localizedUrlError(parsed.code, localeFromRequest(request)) }, { status: 400 });
   }
   const listed = await listPersistedOpportunities(parsed.url);
   return NextResponse.json(listed);
@@ -26,7 +26,7 @@ export async function POST(request: Request) {
   }
   const parsed = parseSiteUrl(body.url);
   if (!parsed.ok) {
-    return NextResponse.json({ error: parsed.error }, { status: 400 });
+    return NextResponse.json({ error: localizedUrlError(parsed.code, localeFromRequest(request)) }, { status: 400 });
   }
   const result = await enqueueJob("insights.opportunities", {
     url: parsed.url,

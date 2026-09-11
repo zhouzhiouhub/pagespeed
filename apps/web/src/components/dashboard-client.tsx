@@ -5,6 +5,8 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { SiteUrlForm } from "@/components/site-url-form";
 import { Ga4ConnectPanel } from "@/components/ga4-connect-panel";
+import { useI18n, useT } from "@/components/i18n-provider";
+import { dateLocale } from "@/lib/i18n/locale";
 import { parseSiteUrl } from "@/lib/url";
 import { readSiteUrl, writeSiteUrl } from "@/lib/site";
 
@@ -54,6 +56,8 @@ type AnalyticsNarrative = {
 
 export function DashboardClient({ initialUrl }: { initialUrl: string | null }) {
   const router = useRouter();
+  const t = useT();
+  const { locale } = useI18n();
   const [siteUrl, setSiteUrl] = useState<string | null>(initialUrl);
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(false);
@@ -76,40 +80,48 @@ export function DashboardClient({ initialUrl }: { initialUrl: string | null }) {
     router.replace(`/?url=${encodeURIComponent(parsed.url)}`);
   }, [initialUrl, router]);
 
-  const load = useCallback(async (url: string) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch(`/api/dashboard?url=${encodeURIComponent(url)}`);
-      const json = (await res.json()) as DashboardData & { error?: string };
-      if (!res.ok) {
-        setError(json.error ?? "加载失败");
-        return;
+  const load = useCallback(
+    async (url: string) => {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await fetch(`/api/dashboard?url=${encodeURIComponent(url)}`);
+        const json = (await res.json()) as DashboardData & { error?: string };
+        if (!res.ok) {
+          setError(json.error ?? t("common.loadFailed"));
+          return;
+        }
+        setData(json);
+      } catch {
+        setError(t("common.networkErrorShort"));
+      } finally {
+        setLoading(false);
       }
-      setData(json);
-    } catch {
-      setError("网络错误");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    },
+    [t],
+  );
 
-  const loadAnalytics = useCallback(async (url: string) => {
-    setAnalyticsBusy(true);
-    try {
-      const res = await fetch(`/api/analytics?url=${encodeURIComponent(url)}`);
-      const json = (await res.json()) as AnalyticsNarrative & { error?: string };
-      if (!res.ok) {
-        setError(json.error ?? "Analytics Agent 失败");
-        return;
+  const loadAnalytics = useCallback(
+    async (url: string) => {
+      setAnalyticsBusy(true);
+      try {
+        const res = await fetch(`/api/analytics?url=${encodeURIComponent(url)}`);
+        const json = (await res.json()) as AnalyticsNarrative & {
+          error?: string;
+        };
+        if (!res.ok) {
+          setError(json.error ?? t("dashboard.analyticsFailed"));
+          return;
+        }
+        setAnalytics(json);
+      } catch {
+        setError(t("dashboard.analyticsRequestFailed"));
+      } finally {
+        setAnalyticsBusy(false);
       }
-      setAnalytics(json);
-    } catch {
-      setError("Analytics 请求失败");
-    } finally {
-      setAnalyticsBusy(false);
-    }
-  }, []);
+    },
+    [t],
+  );
 
   useEffect(() => {
     if (!siteUrl) return;
@@ -128,12 +140,12 @@ export function DashboardClient({ initialUrl }: { initialUrl: string | null }) {
       });
       const json = (await res.json()) as { error?: string };
       if (!res.ok) {
-        setError(json.error ?? "爬取失败");
+        setError(json.error ?? t("dashboard.crawlFailed"));
         return;
       }
       await load(siteUrl);
     } catch {
-      setError("爬取请求失败");
+      setError(t("dashboard.crawlRequestFailed"));
     } finally {
       setCrawling(false);
     }
@@ -156,10 +168,10 @@ export function DashboardClient({ initialUrl }: { initialUrl: string | null }) {
             className="h-10 w-auto sm:h-12"
           />
           <h1 className="mt-10 text-center text-3xl font-semibold tracking-tight text-[var(--ink)] sm:text-4xl">
-            让网站持续增长
+            {t("dashboard.heroTitle")}
           </h1>
           <p className="mt-4 max-w-xl text-center text-base text-[var(--muted)] sm:text-lg">
-            输入网址，立刻得到 SEO + GEO 机会与下一步行动——不只是一份报告。
+            {t("dashboard.heroSubtitle")}
           </p>
           <div className="mt-10 w-full">
             <SiteUrlForm />
@@ -171,11 +183,23 @@ export function DashboardClient({ initialUrl }: { initialUrl: string | null }) {
 
   const scores = data?.scores;
   const links = [
-    { href: `/audit?url=${encodeURIComponent(siteUrl)}`, label: "网站分析" },
-    { href: `/keywords?url=${encodeURIComponent(siteUrl)}`, label: "关键词" },
-    { href: `/content?url=${encodeURIComponent(siteUrl)}`, label: "内容" },
-    { href: `/geo?url=${encodeURIComponent(siteUrl)}`, label: "GEO" },
-    { href: `/advice?url=${encodeURIComponent(siteUrl)}`, label: "今日建议" },
+    {
+      href: `/audit?url=${encodeURIComponent(siteUrl)}`,
+      label: t("dashboard.linkAudit"),
+    },
+    {
+      href: `/keywords?url=${encodeURIComponent(siteUrl)}`,
+      label: t("dashboard.linkKeywords"),
+    },
+    {
+      href: `/content?url=${encodeURIComponent(siteUrl)}`,
+      label: t("dashboard.linkContent"),
+    },
+    { href: `/geo?url=${encodeURIComponent(siteUrl)}`, label: t("nav.geo") },
+    {
+      href: `/advice?url=${encodeURIComponent(siteUrl)}`,
+      label: t("dashboard.linkAdvice"),
+    },
   ];
 
   return (
@@ -184,7 +208,7 @@ export function DashboardClient({ initialUrl }: { initialUrl: string | null }) {
         <div>
           <p className="text-sm text-[var(--muted)]">Dashboard</p>
           <h1 className="mt-1 text-2xl font-semibold text-[var(--fg)]">
-            {data?.site.name ?? "站点"}
+            {data?.site.name ?? t("dashboard.siteFallback")}
           </h1>
           <p className="mt-1 break-all text-sm text-[var(--muted)]">{siteUrl}</p>
         </div>
@@ -195,7 +219,7 @@ export function DashboardClient({ initialUrl }: { initialUrl: string | null }) {
             onClick={() => void runCrawl()}
             className="rounded-lg bg-[var(--brand-blue)] px-3 py-2 text-sm font-medium text-white hover:bg-[var(--brand-blue-deep)] disabled:opacity-60"
           >
-            {crawling ? "全站抽样爬取中…" : "运行多页爬取"}
+            {crawling ? t("dashboard.crawlRunning") : t("dashboard.crawlRun")}
           </button>
           <button
             type="button"
@@ -203,7 +227,7 @@ export function DashboardClient({ initialUrl }: { initialUrl: string | null }) {
             onClick={() => void load(siteUrl)}
             className="rounded-lg border border-[var(--border)] px-3 py-2 text-sm font-medium text-[var(--fg)] hover:bg-[var(--surface-2)]"
           >
-            刷新
+            {t("common.refresh")}
           </button>
           <Link
             href="/"
@@ -212,7 +236,7 @@ export function DashboardClient({ initialUrl }: { initialUrl: string | null }) {
             }}
             className="rounded-lg border border-[var(--border)] px-3 py-2 text-sm text-[var(--muted)] hover:bg-[var(--surface-2)]"
           >
-            更换站点
+            {t("dashboard.changeSite")}
           </Link>
         </div>
       </div>
@@ -227,7 +251,7 @@ export function DashboardClient({ initialUrl }: { initialUrl: string | null }) {
         {[
           { label: "SEO", value: scores?.seo },
           { label: "GEO", value: scores?.geo },
-          { label: "综合", value: scores?.overall },
+          { label: t("dashboard.scoreOverall"), value: scores?.overall },
         ].map((s) => (
           <div
             key={s.label}
@@ -243,11 +267,13 @@ export function DashboardClient({ initialUrl }: { initialUrl: string | null }) {
 
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
         <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-5 py-5">
-          <h2 className="font-semibold text-[var(--fg)]">最近审计</h2>
+          <h2 className="font-semibold text-[var(--fg)]">
+            {t("dashboard.recentAudit")}
+          </h2>
           {data?.audit ? (
             <dl className="mt-3 space-y-2 text-sm">
               <div className="flex justify-between gap-4">
-                <dt className="text-[var(--muted)]">页面</dt>
+                <dt className="text-[var(--muted)]">{t("dashboard.pages")}</dt>
                 <dd>{data.audit.pageCount}</dd>
               </div>
               <div className="flex justify-between gap-4">
@@ -255,34 +281,46 @@ export function DashboardClient({ initialUrl }: { initialUrl: string | null }) {
                 <dd>{data.audit.issueCount}</dd>
               </div>
               <div className="flex justify-between gap-4">
-                <dt className="text-[var(--muted)]">完成时间</dt>
+                <dt className="text-[var(--muted)]">
+                  {t("dashboard.finishedAt")}
+                </dt>
                 <dd>
                   {data.audit.finishedAt
-                    ? new Date(data.audit.finishedAt).toLocaleString()
+                    ? new Date(data.audit.finishedAt).toLocaleString(
+                        dateLocale(locale),
+                      )
                     : "—"}
                 </dd>
               </div>
             </dl>
           ) : (
             <p className="mt-3 text-sm text-[var(--muted)]">
-              尚未爬取。点击「运行多页爬取」开始（sitemap + 抽样）。
+              {t("dashboard.noCrawlYet")}
             </p>
           )}
         </section>
 
         <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-5 py-5">
-          <h2 className="font-semibold text-[var(--fg)]">数据接入</h2>
+          <h2 className="font-semibold text-[var(--fg)]">
+            {t("dashboard.dataAccess")}
+          </h2>
           <ul className="mt-3 space-y-2 text-sm">
             <li className="flex justify-between gap-4">
               <span className="text-[var(--muted)]">PageSpeed</span>
-              <span>{data?.integrations.pagespeed ? "已配置" : "未配置"}</span>
+              <span>
+                {data?.integrations.pagespeed
+                  ? t("dashboard.configured")
+                  : t("dashboard.notConfigured")}
+              </span>
             </li>
             <li className="flex justify-between gap-4">
               <span className="text-[var(--muted)]">GSC</span>
               <span>
                 {data?.integrations.gsc
-                  ? `${data.gsc?.opportunityCount ?? 0} 机会`
-                  : "未连接"}
+                  ? t("dashboard.opportunitiesCount", {
+                      count: data.gsc?.opportunityCount ?? 0,
+                    })
+                  : t("dashboard.notConnected")}
               </span>
             </li>
             <li className="flex justify-between gap-4">
@@ -290,12 +328,16 @@ export function DashboardClient({ initialUrl }: { initialUrl: string | null }) {
               <span>
                 {data?.integrations.ga4
                   ? `${data.ga4.sessions7d ?? 0} sessions`
-                  : "未连接"}
+                  : t("dashboard.notConnected")}
               </span>
             </li>
             <li className="flex justify-between gap-4">
               <span className="text-[var(--muted)]">Postgres</span>
-              <span>{data?.database.available ? "可用" : "降级文件存储"}</span>
+              <span>
+                {data?.database.available
+                  ? t("dashboard.dbAvailable")
+                  : t("dashboard.dbFallback")}
+              </span>
             </li>
           </ul>
           {data?.ga4?.note ? (
@@ -306,7 +348,7 @@ export function DashboardClient({ initialUrl }: { initialUrl: string | null }) {
               href={`/keywords?url=${encodeURIComponent(siteUrl)}`}
               className="text-sm font-medium text-[var(--brand-blue)] hover:underline"
             >
-              管理 GSC →
+              {t("dashboard.manageGsc")}
             </Link>
             <button
               type="button"
@@ -314,7 +356,9 @@ export function DashboardClient({ initialUrl }: { initialUrl: string | null }) {
               onClick={() => void loadAnalytics(siteUrl)}
               className="text-sm font-medium text-[var(--brand-blue)] hover:underline disabled:opacity-50"
             >
-              {analyticsBusy ? "生成叙事中…" : "运行 Analytics Agent"}
+              {analyticsBusy
+                ? t("dashboard.analyticsRunning")
+                : t("dashboard.analyticsRun")}
             </button>
           </div>
         </section>
@@ -340,7 +384,9 @@ export function DashboardClient({ initialUrl }: { initialUrl: string | null }) {
           </ul>
           {analytics.nextActions.length ? (
             <div className="mt-4">
-              <p className="text-sm font-medium text-[var(--fg)]">下一步</p>
+              <p className="text-sm font-medium text-[var(--fg)]">
+                {t("dashboard.nextSteps")}
+              </p>
               <ol className="mt-1 list-decimal space-y-1 pl-5 text-sm text-[var(--muted)]">
                 {analytics.nextActions.map((a) => (
                   <li key={a}>{a}</li>
@@ -357,9 +403,11 @@ export function DashboardClient({ initialUrl }: { initialUrl: string | null }) {
       <section className="mt-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-5 py-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="font-semibold text-[var(--fg)]">今日建议</h2>
+            <h2 className="font-semibold text-[var(--fg)]">
+              {t("dashboard.todaysAdvice")}
+            </h2>
             <p className="mt-1 text-sm text-[var(--muted)]">
-              {data?.advice?.headline ?? "尚未生成"}
+              {data?.advice?.headline ?? t("dashboard.notGenerated")}
             </p>
           </div>
           <Link
@@ -367,8 +415,10 @@ export function DashboardClient({ initialUrl }: { initialUrl: string | null }) {
             className="rounded-lg border border-[var(--border)] px-3 py-2 text-sm font-medium text-[var(--brand-blue)] hover:bg-[var(--surface-2)]"
           >
             {data?.advice
-              ? `查看 ${data.advice.openCount} 项 open →`
-              : "生成建议 →"}
+              ? t("dashboard.viewOpenAdvice", {
+                  count: data.advice.openCount,
+                })
+              : t("dashboard.generateAdvice")}
           </Link>
         </div>
       </section>

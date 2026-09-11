@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { PageShell } from "@/components/page-shell";
+import { useI18n, useT } from "@/components/i18n-provider";
 import {
   clearAdviceCache,
   getCachedAdvice,
@@ -12,26 +13,30 @@ import {
   type AdviceResponse,
   type AdviceUserState,
 } from "@/lib/advice-cache";
+import { dateLocale } from "@/lib/i18n/locale";
+import type { MessageKey } from "@/lib/i18n/messages";
 import { parseSiteUrl } from "@/lib/url";
 import { readSiteUrl, writeSiteUrl } from "@/lib/site";
 
-function priorityMeta(priority: AdviceItem["priority"]) {
+type TFn = (key: MessageKey, params?: Record<string, string | number>) => string;
+
+function priorityMeta(priority: AdviceItem["priority"], t: TFn) {
   if (priority === "high") {
     return {
-      label: "高优先级",
+      label: t("advice.priorityHigh"),
       className: "border-[#f5c2c0] bg-[#fef2f1] text-[#d93025]",
       dot: "🔴",
     };
   }
   if (priority === "medium") {
     return {
-      label: "中优先级",
+      label: t("advice.priorityMedium"),
       className: "border-[#f3e0b5] bg-[#fff8e8] text-[#8a5a00]",
       dot: "🟠",
     };
   }
   return {
-    label: "增长机会",
+    label: t("advice.priorityGrowth"),
     className: "border-[#c6e7c6] bg-[#e6f4ea] text-[#137333]",
     dot: "🟢",
   };
@@ -61,7 +66,8 @@ function AdviceCard({
   onState: (state: AdviceUserState) => void;
   onPlan: () => void;
 }) {
-  const meta = priorityMeta(item.priority);
+  const t = useT();
+  const meta = priorityMeta(item.priority, t);
   const evidenceEntries = Object.entries(item.evidence).slice(0, 6);
 
   return (
@@ -81,7 +87,7 @@ function AdviceCard({
           </p>
         </div>
         <span className="shrink-0 text-xs text-[var(--muted)]">
-          score {(item.score * 100).toFixed(0)}
+          {t("advice.score", { value: (item.score * 100).toFixed(0) })}
         </span>
       </div>
 
@@ -115,7 +121,11 @@ function AdviceCard({
           onClick={onPlan}
           className="rounded-lg bg-[var(--brand-blue)] px-3 py-2 text-sm font-medium text-white hover:bg-[var(--brand-blue-deep)] disabled:opacity-50"
         >
-          {planBusy ? "生成方案中…" : plan ? "刷新方案" : "生成 Action Plan"}
+          {planBusy
+            ? t("advice.generatingPlan")
+            : plan
+              ? t("advice.refreshPlan")
+              : t("advice.generateActionPlan")}
         </button>
         {item.href ? (
           <Link
@@ -131,7 +141,7 @@ function AdviceCard({
           onClick={() => onState("acted")}
           className="rounded-lg border border-[var(--border)] px-3 py-2 text-sm font-medium text-[var(--fg)] hover:bg-[var(--surface-2)] disabled:opacity-50"
         >
-          已处理
+          {t("advice.done")}
         </button>
         <button
           type="button"
@@ -139,7 +149,7 @@ function AdviceCard({
           onClick={() => onState("snoozed")}
           className="rounded-lg border border-[var(--border)] px-3 py-2 text-sm font-medium text-[var(--fg)] hover:bg-[var(--surface-2)] disabled:opacity-50"
         >
-          稍后
+          {t("advice.later")}
         </button>
         <button
           type="button"
@@ -147,7 +157,7 @@ function AdviceCard({
           onClick={() => onState("dismissed")}
           className="rounded-lg border border-[var(--border)] px-3 py-2 text-sm font-medium text-[var(--muted)] hover:bg-[var(--surface-2)] disabled:opacity-50"
         >
-          忽略
+          {t("advice.dismiss")}
         </button>
       </div>
 
@@ -155,7 +165,10 @@ function AdviceCard({
         <div className="mt-4 rounded-lg border border-[var(--border)] bg-[var(--surface-2)] px-4 py-4 text-sm">
           <p className="font-medium text-[var(--fg)]">{plan.summary}</p>
           <p className="mt-1 text-xs text-[var(--muted)]">
-            预估：{plan.estimatedLift} · {plan.source}
+            {t("advice.estimate", {
+              lift: plan.estimatedLift,
+              source: plan.source,
+            })}
           </p>
           {plan.warning ? (
             <p className="mt-2 text-xs text-[#8a5a00]">{plan.warning}</p>
@@ -171,7 +184,9 @@ function AdviceCard({
       ) : null}
 
       {item.userState !== "open" ? (
-        <p className="mt-3 text-xs text-[var(--muted)]">状态：{item.userState}</p>
+        <p className="mt-3 text-xs text-[var(--muted)]">
+          {t("advice.status", { state: item.userState })}
+        </p>
       ) : null}
     </article>
   );
@@ -179,6 +194,8 @@ function AdviceCard({
 
 export function AdviceClient({ initialUrl }: { initialUrl: string | null }) {
   const router = useRouter();
+  const t = useT();
+  const { locale } = useI18n();
   const [siteUrl, setSiteUrl] = useState<string | null>(initialUrl);
   const [data, setData] = useState<AdviceResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -203,45 +220,48 @@ export function AdviceClient({ initialUrl }: { initialUrl: string | null }) {
     router.replace(`/advice?url=${encodeURIComponent(parsed.url)}`);
   }, [initialUrl, router]);
 
-  const load = useCallback(async (url: string, opts?: { force?: boolean }) => {
-    const force = opts?.force ?? false;
-    if (!force) {
-      const cached = getCachedAdvice(url);
-      if (cached) {
-        setData(cached);
-        setFromCache(true);
-        setError(null);
+  const load = useCallback(
+    async (url: string, opts?: { force?: boolean }) => {
+      const force = opts?.force ?? false;
+      if (!force) {
+        const cached = getCachedAdvice(url);
+        if (cached) {
+          setData(cached);
+          setFromCache(true);
+          setError(null);
+          setLoading(false);
+          return;
+        }
+      }
+
+      setLoading(true);
+      setError(null);
+      if (!force) {
+        setData(null);
+        setFromCache(false);
+      }
+
+      try {
+        const qs = force ? "&force=1" : "";
+        const res = await fetch(
+          `/api/advice?url=${encodeURIComponent(url)}${qs}`,
+        );
+        const json = (await res.json()) as AdviceResponse & { error?: string };
+        if (!res.ok) {
+          setError(json.error ?? t("advice.generateFailed"));
+          return;
+        }
+        setCachedAdvice(url, json);
+        setData(json);
+        setFromCache(false);
+      } catch {
+        setError(t("common.networkError"));
+      } finally {
         setLoading(false);
-        return;
       }
-    }
-
-    setLoading(true);
-    setError(null);
-    if (!force) {
-      setData(null);
-      setFromCache(false);
-    }
-
-    try {
-      const qs = force ? "&force=1" : "";
-      const res = await fetch(
-        `/api/advice?url=${encodeURIComponent(url)}${qs}`,
-      );
-      const json = (await res.json()) as AdviceResponse & { error?: string };
-      if (!res.ok) {
-        setError(json.error ?? "生成增长建议失败");
-        return;
-      }
-      setCachedAdvice(url, json);
-      setData(json);
-      setFromCache(false);
-    } catch {
-      setError("网络错误，请稍后重试");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    },
+    [t],
+  );
 
   useEffect(() => {
     if (!siteUrl) return;
@@ -259,13 +279,13 @@ export function AdviceClient({ initialUrl }: { initialUrl: string | null }) {
       });
       const json = (await res.json()) as AdviceResponse & { error?: string };
       if (!res.ok) {
-        setError(json.error ?? "更新状态失败");
+        setError(json.error ?? t("advice.updateFailed"));
         return;
       }
       setCachedAdvice(siteUrl, json);
       setData(json);
     } catch {
-      setError("网络错误，请稍后重试");
+      setError(t("common.networkError"));
     } finally {
       setPatchBusy(false);
     }
@@ -286,12 +306,12 @@ export function AdviceClient({ initialUrl }: { initialUrl: string | null }) {
         error?: string;
       };
       if (!res.ok || !json.plan) {
-        setError(json.error ?? "生成方案失败");
+        setError(json.error ?? t("advice.planFailed"));
         return;
       }
       setPlans((prev) => ({ ...prev, [itemId]: json.plan! }));
     } catch {
-      setError("网络错误，请稍后重试");
+      setError(t("common.networkError"));
     } finally {
       setPlanBusyId(null);
     }
@@ -316,35 +336,30 @@ export function AdviceClient({ initialUrl }: { initialUrl: string | null }) {
   }, [visibleItems]);
 
   return (
-    <PageShell
-      title="今日增长建议"
-      description="编排关键词、内容、GEO、（可选）PageSpeed，汇总成今日优先事项。可标记已处理 / 稍后 / 忽略。"
-    >
+    <PageShell title={t("advice.title")} description={t("advice.description")}>
       {!siteUrl ? (
         <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface)] px-6 py-16 text-center">
-          <p className="text-sm text-[var(--muted)]">
-            还没有网站。请先在 Dashboard 输入 URL。
-          </p>
+          <p className="text-sm text-[var(--muted)]">{t("common.noSiteYet")}</p>
           <Link
             href="/"
             className="mt-4 inline-flex text-sm font-medium text-[var(--brand-blue)] hover:underline"
           >
-            去输入网站 →
+            {t("common.goEnterSite")}
           </Link>
         </div>
       ) : (
         <div className="space-y-5">
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-5 py-4">
             <div>
-              <p className="text-sm text-[var(--muted)]">当前站点</p>
+              <p className="text-sm text-[var(--muted)]">{t("common.currentSite")}</p>
               <p className="mt-1 break-all font-medium text-[var(--fg)]">{siteUrl}</p>
               {data ? (
                 <p className="mt-1 text-xs text-[var(--muted)]">
                   {data.greeting}
-                  {fromCache ? " · 缓存" : ""}
+                  {fromCache ? ` · ${t("common.cache")}` : ""}
                   {data.model ? ` · ${data.model}` : ""}
                   {" · "}
-                  {new Date(data.generatedAt).toLocaleString()}
+                  {new Date(data.generatedAt).toLocaleString(dateLocale(locale))}
                 </p>
               ) : null}
             </div>
@@ -358,14 +373,14 @@ export function AdviceClient({ initialUrl }: { initialUrl: string | null }) {
                 }}
                 className="rounded-lg border border-[var(--border)] px-3 py-2 text-sm font-medium text-[var(--fg)] hover:bg-[var(--surface-2)] disabled:opacity-60"
               >
-                {loading ? "编排中…" : "重新生成"}
+                {loading ? t("advice.regenerating") : t("advice.regenerate")}
               </button>
               <button
                 type="button"
                 onClick={() => setShowClosed((v) => !v)}
                 className="rounded-lg border border-[var(--border)] px-3 py-2 text-sm font-medium text-[var(--fg)] hover:bg-[var(--surface-2)]"
               >
-                {showClosed ? "隐藏已处理" : "显示全部状态"}
+                {showClosed ? t("advice.hideClosed") : t("advice.showAll")}
               </button>
             </div>
           </div>
@@ -388,14 +403,14 @@ export function AdviceClient({ initialUrl }: { initialUrl: string | null }) {
                 onClick={() => void load(siteUrl, { force: true })}
                 className="rounded-md bg-[var(--brand-blue)] px-3 py-1.5 text-sm font-medium text-white disabled:opacity-60"
               >
-                重试
+                {t("common.retry")}
               </button>
             </div>
           ) : null}
 
           {loading && !data ? (
             <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface)] px-6 py-16 text-center text-sm text-[var(--muted)]">
-              正在汇总关键词 / 内容 / GEO / 审计信号…
+              {t("advice.loading")}
             </div>
           ) : null}
 
@@ -406,39 +421,43 @@ export function AdviceClient({ initialUrl }: { initialUrl: string | null }) {
                   {data.headline}
                 </p>
                 <p className="mt-2 text-sm text-[var(--muted)]">
-                  来源：{data.sources.join(" · ") || "—"}
+                  {t("advice.sources", {
+                    sources: data.sources.join(" · ") || "—",
+                  })}
                 </p>
               </div>
 
               {groups.length === 0 ? (
                 <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface)] px-6 py-16 text-center text-sm text-[var(--muted)]">
-                  当前没有 open 状态的建议。可点「显示全部状态」或重新生成。
+                  {t("advice.noOpen")}
                 </div>
               ) : (
-                groups.map((group) => (
-                  <section key={group.key} className="space-y-3">
-                    <h2 className="text-sm font-semibold text-[var(--fg)]">
-                      {priorityMeta(group.key).dot}{" "}
-                      {priorityMeta(group.key).label}
-                      <span className="ml-2 font-normal text-[var(--muted)]">
-                        {group.items.length}
-                      </span>
-                    </h2>
-                    <div className="space-y-4">
-                      {group.items.map((item) => (
-                        <AdviceCard
-                          key={item.id}
-                          item={item}
-                          busy={patchBusy}
-                          planBusy={planBusyId === item.id}
-                          plan={plans[item.id] ?? null}
-                          onState={(state) => void patchState(item.id, state)}
-                          onPlan={() => void loadPlan(item.id)}
-                        />
-                      ))}
-                    </div>
-                  </section>
-                ))
+                groups.map((group) => {
+                  const meta = priorityMeta(group.key, t);
+                  return (
+                    <section key={group.key} className="space-y-3">
+                      <h2 className="text-sm font-semibold text-[var(--fg)]">
+                        {meta.dot} {meta.label}
+                        <span className="ml-2 font-normal text-[var(--muted)]">
+                          {group.items.length}
+                        </span>
+                      </h2>
+                      <div className="space-y-4">
+                        {group.items.map((item) => (
+                          <AdviceCard
+                            key={item.id}
+                            item={item}
+                            busy={patchBusy}
+                            planBusy={planBusyId === item.id}
+                            plan={plans[item.id] ?? null}
+                            onState={(state) => void patchState(item.id, state)}
+                            onPlan={() => void loadPlan(item.id)}
+                          />
+                        ))}
+                      </div>
+                    </section>
+                  );
+                })
               )}
             </div>
           ) : null}

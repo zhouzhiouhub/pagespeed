@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useI18n, useT } from "@/components/i18n-provider";
+import { dateLocale } from "@/lib/i18n/locale";
 
 type GscStatus = {
   connected: boolean;
@@ -24,6 +26,8 @@ export function GscConnectPanel({
   siteUrl: string;
   onSynced: () => void;
 }) {
+  const t = useT();
+  const { locale } = useI18n();
   const [status, setStatus] = useState<GscStatus | null>(null);
   const [sites, setSites] = useState<GscSite[]>([]);
   const [property, setProperty] = useState("");
@@ -46,13 +50,13 @@ export function GscConnectPanel({
       error?: string;
     };
     if (!res.ok) {
-      setMessage(json.error ?? "无法读取 GSC 站点列表");
+      setMessage(json.error ?? t("gsc.loadSitesFailed"));
       return;
     }
     setSites(json.sites ?? []);
     if (json.suggestedProperty) setProperty(json.suggestedProperty);
     else if (json.sites?.[0]?.siteUrl) setProperty(json.sites[0].siteUrl);
-  }, [siteUrl]);
+  }, [siteUrl, t]);
 
   useEffect(() => {
     void (async () => {
@@ -63,7 +67,7 @@ export function GscConnectPanel({
 
   async function syncNow() {
     if (!property) {
-      setMessage("请选择 Search Console 资源");
+      setMessage(t("gsc.selectProperty"));
       return;
     }
     setBusy(true);
@@ -79,14 +83,16 @@ export function GscConnectPanel({
         opportunityCount?: number;
       };
       if (!res.ok) {
-        setMessage(json.error ?? "同步失败");
+        setMessage(json.error ?? t("gsc.syncFailed"));
         return;
       }
-      setMessage(`已同步，识别到 ${json.opportunityCount ?? 0} 个关键词机会`);
+      setMessage(
+        t("gsc.synced", { count: json.opportunityCount ?? 0 }),
+      );
       await refreshStatus();
       onSynced();
     } catch {
-      setMessage("网络错误，同步失败");
+      setMessage(t("gsc.networkSyncFailed"));
     } finally {
       setBusy(false);
     }
@@ -101,14 +107,24 @@ export function GscConnectPanel({
           <p className="text-sm font-medium text-[var(--fg)]">Google Search Console</p>
           <p className="mt-1 text-xs text-[var(--muted)]">
             {status?.connected
-              ? `已登录${status.email ? `：${status.email}` : ""}`
-              : "连接后拉取真实查询、排名与 CTR，替换启发式结果"}
+              ? t("gsc.signedIn", {
+                  email: status.email
+                    ? locale === "en"
+                      ? `: ${status.email}`
+                      : `：${status.email}`
+                    : "",
+                })
+              : t("gsc.connectHint")}
           </p>
           {status?.selectedProperty ? (
             <p className="mt-1 text-xs text-[var(--muted)]">
-              资源：{status.selectedProperty}
+              {t("gsc.property", { property: status.selectedProperty })}
               {status.lastSyncedAt
-                ? ` · 同步于 ${new Date(status.lastSyncedAt).toLocaleString()}`
+                ? t("gsc.syncedAt", {
+                    time: new Date(status.lastSyncedAt).toLocaleString(
+                      dateLocale(locale),
+                    ),
+                  })
                 : ""}
             </p>
           ) : null}
@@ -119,7 +135,7 @@ export function GscConnectPanel({
             href={`/api/gsc/connect?callbackUrl=${encodeURIComponent(callback)}`}
             className="rounded-lg bg-[var(--brand-blue)] px-3 py-2 text-sm font-medium text-white hover:bg-[var(--brand-blue-deep)]"
           >
-            连接 GSC
+            {t("gsc.connect")}
           </a>
         ) : (
           <div className="flex flex-wrap items-center gap-2">
@@ -129,7 +145,7 @@ export function GscConnectPanel({
               className="max-w-[16rem] rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
             >
               {sites.length === 0 ? (
-                <option value="">加载站点中…</option>
+                <option value="">{t("gsc.loadingSites")}</option>
               ) : (
                 sites.map((s) => (
                   <option key={s.siteUrl} value={s.siteUrl}>
@@ -144,7 +160,7 @@ export function GscConnectPanel({
               onClick={() => void syncNow()}
               className="rounded-lg bg-[var(--brand-blue)] px-3 py-2 text-sm font-medium text-white hover:bg-[var(--brand-blue-deep)] disabled:opacity-60"
             >
-              {busy ? "同步中…" : "同步关键词"}
+              {busy ? t("gsc.syncing") : t("gsc.syncKeywords")}
             </button>
           </div>
         )}
@@ -153,9 +169,7 @@ export function GscConnectPanel({
         <p className="mt-3 text-sm text-[var(--muted)]">{message}</p>
       ) : null}
       {status?.error ? (
-        <p className="mt-2 text-sm text-[#d93025]">
-          登录态已过期，请重新连接 GSC。
-        </p>
+        <p className="mt-2 text-sm text-[#d93025]">{t("gsc.sessionExpired")}</p>
       ) : null}
     </div>
   );

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { PageShell } from "@/components/page-shell";
+import { useT } from "@/components/i18n-provider";
 import {
   clearContentCache,
   getCachedContent,
@@ -12,18 +13,21 @@ import {
   type ContentGap,
   type ContentGapsResponse,
 } from "@/lib/content-cache";
+import type { MessageKey } from "@/lib/i18n/messages";
 import { parseSiteUrl } from "@/lib/url";
 import { readSiteUrl, writeSiteUrl } from "@/lib/site";
+
+type TFn = (key: MessageKey, params?: Record<string, string | number>) => string;
 
 function stars(n: number) {
   const clamped = Math.max(1, Math.min(5, Math.round(n)));
   return "★".repeat(clamped) + "☆".repeat(5 - clamped);
 }
 
-function sourceLabel(source: ContentGapsResponse["source"]) {
+function sourceLabel(source: ContentGapsResponse["source"], t: TFn) {
   if (source === "gsc") return "Google Search Console";
-  if (source === "ai") return "AI 推断（待 GSC 校验）";
-  return "页面启发式（待 GSC）";
+  if (source === "ai") return t("content.sourceAi");
+  return t("content.sourceHeuristic");
 }
 
 function GapsTable({
@@ -35,16 +39,17 @@ function GapsTable({
   selected: string | null;
   onSelect: (id: string) => void;
 }) {
+  const t = useT();
   return (
     <div className="overflow-x-auto rounded-xl border border-[var(--border)] bg-[var(--surface)]">
       <table className="min-w-full text-left text-sm">
         <thead className="border-b border-[var(--border)] bg-[var(--surface-2)]/60 text-[var(--muted)]">
           <tr>
-            <th className="px-4 py-3 font-medium">缺口标题</th>
-            <th className="px-4 py-3 font-medium">目标词</th>
-            <th className="px-4 py-3 font-medium">建议路径</th>
-            <th className="px-4 py-3 font-medium">价值</th>
-            <th className="px-4 py-3 font-medium">操作</th>
+            <th className="px-4 py-3 font-medium">{t("content.colGap")}</th>
+            <th className="px-4 py-3 font-medium">{t("content.colTarget")}</th>
+            <th className="px-4 py-3 font-medium">{t("content.colPath")}</th>
+            <th className="px-4 py-3 font-medium">{t("content.colValue")}</th>
+            <th className="px-4 py-3 font-medium">{t("content.colAction")}</th>
           </tr>
         </thead>
         <tbody>
@@ -78,7 +83,7 @@ function GapsTable({
                     onClick={() => onSelect(item.id)}
                     className="text-sm font-medium text-[var(--brand-blue)] hover:underline"
                   >
-                    查看
+                    {t("content.view")}
                   </button>
                 </td>
               </tr>
@@ -97,6 +102,7 @@ function DetailPanel({
   item: ContentGap;
   siteUrl: string;
 }) {
+  const t = useT();
   const [brief, setBrief] = useState<ContentBrief | null>(null);
   const [busy, setBusy] = useState(false);
   const [briefError, setBriefError] = useState<string | null>(null);
@@ -117,12 +123,12 @@ function DetailPanel({
       });
       const json = (await res.json()) as ContentBrief & { error?: string };
       if (!res.ok) {
-        setBriefError(json.error ?? "生成 Brief 失败");
+        setBriefError(json.error ?? t("content.briefFailed"));
         return;
       }
       setBrief(json);
     } catch {
-      setBriefError("网络错误，请稍后重试");
+      setBriefError(t("common.networkError"));
     } finally {
       setBusy(false);
     }
@@ -131,35 +137,35 @@ function DetailPanel({
   return (
     <aside className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-5 py-5">
       <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
-        内容缺口
+        {t("content.gapsTitle")}
       </p>
       <h2 className="mt-2 text-lg font-semibold text-[var(--fg)]">{item.title}</h2>
       <dl className="mt-4 space-y-3 text-sm">
         <div>
-          <dt className="text-[var(--muted)]">目标关键词</dt>
+          <dt className="text-[var(--muted)]">{t("content.targetKeyword")}</dt>
           <dd className="mt-0.5 font-medium text-[var(--fg)]">
             {item.targetKeyword}
           </dd>
         </div>
         <div>
-          <dt className="text-[var(--muted)]">建议路径</dt>
+          <dt className="text-[var(--muted)]">{t("content.suggestedPath")}</dt>
           <dd className="mt-0.5 font-mono text-xs text-[var(--fg)]">
             {item.suggestedPath}
           </dd>
         </div>
         <div>
-          <dt className="text-[var(--muted)]">意图</dt>
+          <dt className="text-[var(--muted)]">{t("content.intent")}</dt>
           <dd className="mt-0.5 text-[var(--fg)]">{item.intent ?? "—"}</dd>
         </div>
         <div>
-          <dt className="text-[var(--muted)]">为什么值得写</dt>
+          <dt className="text-[var(--muted)]">{t("content.whyWrite")}</dt>
           <dd className="mt-0.5 leading-relaxed text-[var(--fg)]">
             {item.rationale}
           </dd>
         </div>
         {item.geoHint ? (
           <div>
-            <dt className="text-[var(--muted)]">GEO 提示</dt>
+            <dt className="text-[var(--muted)]">{t("content.geoHint")}</dt>
             <dd className="mt-0.5 text-[var(--fg)]">{item.geoHint}</dd>
           </div>
         ) : null}
@@ -171,7 +177,11 @@ function DetailPanel({
         onClick={() => void generateBrief()}
         className="mt-5 w-full rounded-lg bg-[var(--brand-blue)] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[var(--brand-blue-deep)] disabled:opacity-60"
       >
-        {busy ? "正在生成 Brief…" : brief ? "重新生成内容 Brief" : "生成内容 Brief"}
+        {busy
+          ? t("content.generatingBrief")
+          : brief
+            ? t("content.regenerateBrief")
+            : t("content.generateBrief")}
       </button>
 
       {briefError ? (
@@ -183,7 +193,7 @@ function DetailPanel({
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
               Content Brief
-              {brief.source === "ai" ? " · AI" : " · 规则模板"}
+              {brief.source === "ai" ? t("common.aiSuffix") : t("common.ruleSuffix")}
             </p>
             <p className="mt-2 leading-relaxed text-[var(--fg)]">{brief.summary}</p>
             {brief.warning ? (
@@ -192,17 +202,21 @@ function DetailPanel({
           </div>
 
           <div>
-            <p className="font-medium text-[var(--fg)]">搜索意图</p>
+            <p className="font-medium text-[var(--fg)]">
+              {t("content.searchIntent")}
+            </p>
             <p className="mt-1 text-[var(--muted)]">{brief.intent}</p>
           </div>
 
           <div>
-            <p className="font-medium text-[var(--fg)]">首段直接答案</p>
+            <p className="font-medium text-[var(--fg)]">
+              {t("content.directAnswer")}
+            </p>
             <p className="mt-1 text-[var(--muted)]">{brief.definitionBlock}</p>
           </div>
 
           <div>
-            <p className="font-medium text-[var(--fg)]">大纲 H2</p>
+            <p className="font-medium text-[var(--fg)]">{t("content.outlineH2")}</p>
             <ol className="mt-1 list-decimal space-y-1 pl-5 text-[var(--muted)]">
               {brief.outline.map((h) => (
                 <li key={h}>{h}</li>
@@ -223,28 +237,34 @@ function DetailPanel({
           </div>
 
           <div>
-            <p className="font-medium text-[var(--fg)]">内链目标</p>
+            <p className="font-medium text-[var(--fg)]">
+              {t("content.internalTargets")}
+            </p>
             <ul className="mt-1 list-disc space-y-1 pl-5 text-[var(--muted)]">
-              {brief.internalLinks.map((t) => (
-                <li key={t}>{t}</li>
+              {brief.internalLinks.map((link) => (
+                <li key={link}>{link}</li>
               ))}
             </ul>
           </div>
 
           <div>
-            <p className="font-medium text-[var(--fg)]">结构化数据</p>
+            <p className="font-medium text-[var(--fg)]">
+              {t("content.structuredData")}
+            </p>
             <ul className="mt-1 list-disc space-y-1 pl-5 text-[var(--muted)]">
-              {brief.schemaHints.map((t) => (
-                <li key={t}>{t}</li>
+              {brief.schemaHints.map((hint) => (
+                <li key={hint}>{hint}</li>
               ))}
             </ul>
           </div>
 
           <div>
-            <p className="font-medium text-[var(--fg)]">GEO 清单</p>
+            <p className="font-medium text-[var(--fg)]">
+              {t("content.geoChecklist")}
+            </p>
             <ul className="mt-1 list-disc space-y-1 pl-5 text-[var(--muted)]">
-              {brief.geoChecklist.map((t) => (
-                <li key={t}>{t}</li>
+              {brief.geoChecklist.map((item) => (
+                <li key={item}>{item}</li>
               ))}
             </ul>
           </div>
@@ -256,6 +276,7 @@ function DetailPanel({
 
 export function ContentClient({ initialUrl }: { initialUrl: string | null }) {
   const router = useRouter();
+  const t = useT();
   const [siteUrl, setSiteUrl] = useState<string | null>(initialUrl);
   const [data, setData] = useState<ContentGapsResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -277,44 +298,49 @@ export function ContentClient({ initialUrl }: { initialUrl: string | null }) {
     router.replace(`/content?url=${encodeURIComponent(parsed.url)}`);
   }, [initialUrl, router]);
 
-  const load = useCallback(async (url: string, opts?: { force?: boolean }) => {
-    const force = opts?.force ?? false;
-    if (!force) {
-      const cached = getCachedContent(url);
-      if (cached) {
-        setData(cached);
-        setFromCache(true);
-        setSelected(cached.items[0]?.id ?? null);
-        setError(null);
+  const load = useCallback(
+    async (url: string, opts?: { force?: boolean }) => {
+      const force = opts?.force ?? false;
+      if (!force) {
+        const cached = getCachedContent(url);
+        if (cached) {
+          setData(cached);
+          setFromCache(true);
+          setSelected(cached.items[0]?.id ?? null);
+          setError(null);
+          setLoading(false);
+          return;
+        }
+      }
+
+      setLoading(true);
+      setError(null);
+      if (!force) {
+        setData(null);
+        setFromCache(false);
+      }
+
+      try {
+        const res = await fetch(`/api/content?url=${encodeURIComponent(url)}`);
+        const json = (await res.json()) as ContentGapsResponse & {
+          error?: string;
+        };
+        if (!res.ok) {
+          setError(json.error ?? t("content.analyzeFailed"));
+          return;
+        }
+        setCachedContent(url, json);
+        setData(json);
+        setFromCache(false);
+        setSelected(json.items[0]?.id ?? null);
+      } catch {
+        setError(t("common.networkError"));
+      } finally {
         setLoading(false);
-        return;
       }
-    }
-
-    setLoading(true);
-    setError(null);
-    if (!force) {
-      setData(null);
-      setFromCache(false);
-    }
-
-    try {
-      const res = await fetch(`/api/content?url=${encodeURIComponent(url)}`);
-      const json = (await res.json()) as ContentGapsResponse & { error?: string };
-      if (!res.ok) {
-        setError(json.error ?? "内容缺口分析失败");
-        return;
-      }
-      setCachedContent(url, json);
-      setData(json);
-      setFromCache(false);
-      setSelected(json.items[0]?.id ?? null);
-    } catch {
-      setError("网络错误，请稍后重试");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    },
+    [t],
+  );
 
   useEffect(() => {
     if (!siteUrl) return;
@@ -326,31 +352,29 @@ export function ContentClient({ initialUrl }: { initialUrl: string | null }) {
 
   return (
     <PageShell
-      title="内容机会"
-      description="该写什么、先写哪篇。V1 输出内容缺口与 Brief（首段答案 / 大纲 / FAQ），不自动发布全文。"
+      title={t("content.title")}
+      description={t("content.description")}
     >
       {!siteUrl ? (
         <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface)] px-6 py-16 text-center">
-          <p className="text-sm text-[var(--muted)]">
-            还没有网站。请先在 Dashboard 输入 URL。
-          </p>
+          <p className="text-sm text-[var(--muted)]">{t("common.noSiteYet")}</p>
           <Link
             href="/"
             className="mt-4 inline-flex text-sm font-medium text-[var(--brand-blue)] hover:underline"
           >
-            去输入网站 →
+            {t("common.goEnterSite")}
           </Link>
         </div>
       ) : (
         <div className="space-y-5">
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-5 py-4">
             <div>
-              <p className="text-sm text-[var(--muted)]">当前站点</p>
+              <p className="text-sm text-[var(--muted)]">{t("common.currentSite")}</p>
               <p className="mt-1 break-all font-medium text-[var(--fg)]">{siteUrl}</p>
               {data ? (
                 <p className="mt-1 text-xs text-[var(--muted)]">
-                  来源：{sourceLabel(data.source)}
-                  {fromCache ? " · 缓存" : ""}
+                  {t("common.source", { source: sourceLabel(data.source, t) })}
+                  {fromCache ? ` · ${t("common.cache")}` : ""}
                 </p>
               ) : null}
             </div>
@@ -364,13 +388,13 @@ export function ContentClient({ initialUrl }: { initialUrl: string | null }) {
                 }}
                 className="rounded-lg border border-[var(--border)] px-3 py-2 text-sm font-medium text-[var(--fg)] hover:bg-[var(--surface-2)] disabled:opacity-60"
               >
-                {loading ? "分析中…" : "刷新内容缺口"}
+                {loading ? t("content.analyzing") : t("content.refreshGaps")}
               </button>
               <Link
                 href={`/keywords?url=${encodeURIComponent(siteUrl)}`}
                 className="rounded-lg bg-[var(--brand-blue)] px-3 py-2 text-sm font-medium text-white hover:bg-[var(--brand-blue-deep)]"
               >
-                查看关键词机会
+                {t("content.viewKeywords")}
               </Link>
             </div>
           </div>
@@ -393,14 +417,14 @@ export function ContentClient({ initialUrl }: { initialUrl: string | null }) {
                 onClick={() => void load(siteUrl, { force: true })}
                 className="rounded-md bg-[var(--brand-blue)] px-3 py-1.5 text-sm font-medium text-white disabled:opacity-60"
               >
-                重试
+                {t("common.retry")}
               </button>
             </div>
           ) : null}
 
           {loading && !data ? (
             <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface)] px-6 py-16 text-center text-sm text-[var(--muted)]">
-              正在抓取页面并识别内容缺口…
+              {t("content.loading")}
             </div>
           ) : null}
 
@@ -419,7 +443,7 @@ export function ContentClient({ initialUrl }: { initialUrl: string | null }) {
 
           {data && data.items.length === 0 && !loading ? (
             <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface)] px-6 py-16 text-center text-sm text-[var(--muted)]">
-              未识别到内容缺口。可尝试刷新，或先在关键词页同步 GSC。
+              {t("content.empty")}
             </div>
           ) : null}
         </div>

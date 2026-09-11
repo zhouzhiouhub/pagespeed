@@ -234,14 +234,18 @@ function collectOpportunities(
   return items.slice(0, 40);
 }
 
-async function fetchPageSpeedRaw(url: string, strategy: PsiStrategy) {
+async function fetchPageSpeedRaw(
+  url: string,
+  strategy: PsiStrategy,
+  locale = "zh-CN",
+) {
   const key = requireApiKey();
   const endpoint = new URL(
     "https://www.googleapis.com/pagespeedonline/v5/runPagespeed",
   );
   endpoint.searchParams.set("url", url);
   endpoint.searchParams.set("strategy", strategy);
-  endpoint.searchParams.set("locale", "zh-CN");
+  endpoint.searchParams.set("locale", locale);
   endpoint.searchParams.set("key", key);
   for (const category of [
     "performance",
@@ -260,12 +264,13 @@ async function fetchPageSpeedRaw(url: string, strategy: PsiStrategy) {
 export async function runPageSpeed(
   url: string,
   strategy: PsiStrategy = "mobile",
+  locale = "zh-CN",
 ): Promise<PsiSummary> {
   let lastError: unknown;
 
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     try {
-      const res = await fetchPageSpeedRaw(url, strategy);
+      const res = await fetchPageSpeedRaw(url, strategy, locale);
       const data = (await res.json()) as PsiApiResponse;
 
       if (!res.ok || data.error) {

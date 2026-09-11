@@ -5,7 +5,7 @@ import { readGscStore } from "@/server/gsc/store";
 import { readAdviceRun } from "@/server/advice/store";
 import { getLatestAuditForUrl, ensureSite } from "@/server/sites/repo";
 import { isDatabaseAvailable } from "@/server/db/ready";
-import { parseSiteUrl } from "@/lib/url";
+import { parseSiteUrl, localeFromRequest, localizedUrlError } from "@/lib/url";
 
 export const runtime = "nodejs";
 
@@ -16,7 +16,7 @@ export async function GET(request: Request) {
   }
   const parsed = parseSiteUrl(urlParam);
   if (!parsed.ok) {
-    return NextResponse.json({ error: parsed.error }, { status: 400 });
+    return NextResponse.json({ error: localizedUrlError(parsed.code, localeFromRequest(request)) }, { status: 400 });
   }
 
   const site = await ensureSite(parsed.url);

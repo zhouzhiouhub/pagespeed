@@ -5,12 +5,14 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { PageShell } from "@/components/page-shell";
 import { GscConnectPanel } from "@/components/gsc-connect-panel";
+import { useT } from "@/components/i18n-provider";
 import {
   getCachedKeywords,
   setCachedKeywords,
   type KeywordOpportunity,
   type KeywordsResponse,
 } from "@/lib/keywords-cache";
+import type { MessageKey } from "@/lib/i18n/messages";
 import { parseSiteUrl } from "@/lib/url";
 import { readSiteUrl, writeSiteUrl } from "@/lib/site";
 
@@ -31,6 +33,8 @@ type ActionPlan = {
   warning: string | null;
 };
 
+type TFn = (key: MessageKey, params?: Record<string, string | number>) => string;
+
 function stars(n: number) {
   const clamped = Math.max(1, Math.min(5, Math.round(n)));
   return "★".repeat(clamped) + "☆".repeat(5 - clamped);
@@ -50,10 +54,10 @@ function trendClass(trend: number | null) {
   return "text-[var(--muted)]";
 }
 
-function sourceLabel(source: KeywordsResponse["source"]) {
+function sourceLabel(source: KeywordsResponse["source"], t: TFn) {
   if (source === "gsc") return "Google Search Console";
-  if (source === "ai") return "AI 推断（待 GSC 校验）";
-  return "页面启发式（待 GSC）";
+  if (source === "ai") return t("keywords.sourceAi");
+  return t("keywords.sourceHeuristic");
 }
 
 function KeywordsTable({
@@ -65,17 +69,18 @@ function KeywordsTable({
   selected: string | null;
   onSelect: (query: string) => void;
 }) {
+  const t = useT();
   return (
     <div className="overflow-x-auto rounded-xl border border-[var(--border)] bg-[var(--surface)]">
       <table className="min-w-full text-left text-sm">
         <thead className="border-b border-[var(--border)] bg-[var(--surface-2)]/60 text-[var(--muted)]">
           <tr>
-            <th className="px-4 py-3 font-medium">关键词</th>
-            <th className="px-4 py-3 font-medium">当前排名</th>
-            <th className="px-4 py-3 font-medium">趋势</th>
-            <th className="px-4 py-3 font-medium">落地页</th>
-            <th className="px-4 py-3 font-medium">潜力</th>
-            <th className="px-4 py-3 font-medium">操作</th>
+            <th className="px-4 py-3 font-medium">{t("keywords.colKeyword")}</th>
+            <th className="px-4 py-3 font-medium">{t("keywords.colRank")}</th>
+            <th className="px-4 py-3 font-medium">{t("keywords.colTrend")}</th>
+            <th className="px-4 py-3 font-medium">{t("keywords.colLanding")}</th>
+            <th className="px-4 py-3 font-medium">{t("keywords.colPotential")}</th>
+            <th className="px-4 py-3 font-medium">{t("keywords.colAction")}</th>
           </tr>
         </thead>
         <tbody>
@@ -111,7 +116,7 @@ function KeywordsTable({
                     onClick={() => onSelect(item.query)}
                     className="text-sm font-medium text-[var(--brand-blue)] hover:underline"
                   >
-                    查看方案
+                    {t("keywords.viewPlan")}
                   </button>
                 </td>
               </tr>
@@ -130,6 +135,7 @@ function DetailPanel({
   item: KeywordOpportunity;
   siteUrl: string;
 }) {
+  const t = useT();
   const [plan, setPlan] = useState<ActionPlan | null>(null);
   const [busy, setBusy] = useState(false);
   const [planError, setPlanError] = useState<string | null>(null);
@@ -137,7 +143,7 @@ function DetailPanel({
   const estimated =
     item.position != null
       ? `#${item.position} → #${Math.max(3, item.position - 8)}~${Math.max(5, item.position - 4)}`
-      : "待 GSC 数据校准";
+      : t("keywords.awaitingGsc");
 
   useEffect(() => {
     setPlan(null);
@@ -155,12 +161,12 @@ function DetailPanel({
       });
       const json = (await res.json()) as ActionPlan & { error?: string };
       if (!res.ok) {
-        setPlanError(json.error ?? "生成方案失败");
+        setPlanError(json.error ?? t("keywords.planFailed"));
         return;
       }
       setPlan(json);
     } catch {
-      setPlanError("网络错误，请稍后重试");
+      setPlanError(t("common.networkError"));
     } finally {
       setBusy(false);
     }
@@ -169,30 +175,30 @@ function DetailPanel({
   return (
     <aside className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-5 py-5">
       <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
-        机会详情
+        {t("keywords.detailTitle")}
       </p>
       <h2 className="mt-2 text-lg font-semibold text-[var(--fg)]">{item.query}</h2>
       <dl className="mt-4 space-y-3 text-sm">
         <div>
-          <dt className="text-[var(--muted)]">预计提升</dt>
+          <dt className="text-[var(--muted)]">{t("keywords.estimatedLift")}</dt>
           <dd className="mt-0.5 font-medium text-[var(--fg)]">{estimated}</dd>
         </div>
         <div>
-          <dt className="text-[var(--muted)]">意图</dt>
+          <dt className="text-[var(--muted)]">{t("keywords.intent")}</dt>
           <dd className="mt-0.5 text-[var(--fg)]">{item.intent ?? "—"}</dd>
         </div>
         <div>
-          <dt className="text-[var(--muted)]">落地页</dt>
+          <dt className="text-[var(--muted)]">{t("keywords.landingPage")}</dt>
           <dd className="mt-0.5 break-all text-[var(--fg)]">{item.page}</dd>
         </div>
         <div>
-          <dt className="text-[var(--muted)]">为什么值得做</dt>
+          <dt className="text-[var(--muted)]">{t("keywords.whyWorth")}</dt>
           <dd className="mt-0.5 leading-relaxed text-[var(--fg)]">
             {item.rationale}
           </dd>
         </div>
         <div>
-          <dt className="text-[var(--muted)]">建议动作</dt>
+          <dt className="text-[var(--muted)]">{t("keywords.suggestedActions")}</dt>
           <dd className="mt-2 space-y-1.5">
             {item.actions.map((action, i) => (
               <p key={action} className="text-[var(--fg)]">
@@ -208,7 +214,11 @@ function DetailPanel({
         onClick={() => void generatePlan()}
         className="mt-5 w-full rounded-lg bg-[var(--brand-blue)] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[var(--brand-blue-deep)] disabled:opacity-60"
       >
-        {busy ? "正在生成方案…" : plan ? "重新生成优化方案" : "生成优化方案"}
+        {busy
+          ? t("keywords.generatingPlan")
+          : plan
+            ? t("keywords.regeneratePlan")
+            : t("keywords.generatePlan")}
       </button>
 
       {planError ? (
@@ -219,21 +229,25 @@ function DetailPanel({
         <div className="mt-5 space-y-4 border-t border-[var(--border)] pt-4 text-sm">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
-              优化方案
-              {plan.source === "ai" ? " · AI" : " · 规则模板"}
+              {t("keywords.optimizePlan")}
+              {plan.source === "ai" ? t("common.aiSuffix") : t("common.ruleSuffix")}
             </p>
             <p className="mt-2 leading-relaxed text-[var(--fg)]">{plan.summary}</p>
-            <p className="mt-1 text-[var(--muted)]">预计：{plan.estimatedLift}</p>
+            <p className="mt-1 text-[var(--muted)]">
+              {t("keywords.estimated", { lift: plan.estimatedLift })}
+            </p>
             {plan.warning ? (
               <p className="mt-2 text-xs text-[#8a5a00]">{plan.warning}</p>
             ) : null}
           </div>
 
           <div>
-            <p className="font-medium text-[var(--fg)]">Title 候选</p>
+            <p className="font-medium text-[var(--fg)]">
+              {t("keywords.titleCandidates")}
+            </p>
             <ul className="mt-1 list-disc space-y-1 pl-5 text-[var(--muted)]">
-              {plan.titleOptions.map((t) => (
-                <li key={t}>{t}</li>
+              {plan.titleOptions.map((title) => (
+                <li key={title}>{title}</li>
               ))}
             </ul>
           </div>
@@ -244,7 +258,9 @@ function DetailPanel({
           </div>
 
           <div>
-            <p className="font-medium text-[var(--fg)]">首段直接答案</p>
+            <p className="font-medium text-[var(--fg)]">
+              {t("keywords.directAnswer")}
+            </p>
             <p className="mt-1 text-[var(--muted)]">{plan.definitionBlock}</p>
           </div>
 
@@ -261,7 +277,7 @@ function DetailPanel({
           </div>
 
           <div>
-            <p className="font-medium text-[var(--fg)]">内容大纲</p>
+            <p className="font-medium text-[var(--fg)]">{t("keywords.outline")}</p>
             <ol className="mt-1 list-decimal space-y-1 pl-5 text-[var(--muted)]">
               {plan.outline.map((h) => (
                 <li key={h}>{h}</li>
@@ -270,25 +286,29 @@ function DetailPanel({
           </div>
 
           <div>
-            <p className="font-medium text-[var(--fg)]">内链建议</p>
+            <p className="font-medium text-[var(--fg)]">
+              {t("keywords.internalLinks")}
+            </p>
             <ul className="mt-1 list-disc space-y-1 pl-5 text-[var(--muted)]">
-              {plan.internalLinks.map((t) => (
-                <li key={t}>{t}</li>
+              {plan.internalLinks.map((link) => (
+                <li key={link}>{link}</li>
               ))}
             </ul>
           </div>
 
           <div>
-            <p className="font-medium text-[var(--fg)]">结构化数据</p>
+            <p className="font-medium text-[var(--fg)]">
+              {t("keywords.structuredData")}
+            </p>
             <ul className="mt-1 list-disc space-y-1 pl-5 text-[var(--muted)]">
-              {plan.schemaHints.map((t) => (
-                <li key={t}>{t}</li>
+              {plan.schemaHints.map((hint) => (
+                <li key={hint}>{hint}</li>
               ))}
             </ul>
           </div>
 
           <div>
-            <p className="font-medium text-[var(--fg)]">执行步骤</p>
+            <p className="font-medium text-[var(--fg)]">{t("keywords.steps")}</p>
             <ol className="mt-2 space-y-2">
               {plan.steps.map((s) => (
                 <li key={`${s.order}-${s.title}`}>
@@ -306,9 +326,9 @@ function DetailPanel({
   );
 }
 
-
 export function KeywordsClient({ initialUrl }: { initialUrl: string | null }) {
   const router = useRouter();
+  const t = useT();
   const [siteUrl, setSiteUrl] = useState<string | null>(initialUrl);
   const [data, setData] = useState<KeywordsResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -358,7 +378,7 @@ export function KeywordsClient({ initialUrl }: { initialUrl: string | null }) {
         );
         const json = (await res.json()) as KeywordsResponse & { error?: string };
         if (!res.ok) {
-          setError(json.error ?? "关键词分析失败");
+          setError(json.error ?? t("keywords.analyzeFailed"));
           return;
         }
         setCachedKeywords(url, json);
@@ -366,12 +386,12 @@ export function KeywordsClient({ initialUrl }: { initialUrl: string | null }) {
         setFromCache(false);
         setSelected(json.items[0]?.query ?? null);
       } catch {
-        setError("网络错误，请稍后重试");
+        setError(t("common.networkError"));
       } finally {
         setLoading(false);
       }
     },
-    [],
+    [t],
   );
 
   useEffect(() => {
@@ -384,19 +404,17 @@ export function KeywordsClient({ initialUrl }: { initialUrl: string | null }) {
 
   return (
     <PageShell
-      title="关键词机会"
-      description="值得抢的词，而不是词库浏览器。V1 可先用页面/AI 推断；接入 GSC 后替换为真实排名与 CTR。"
+      title={t("keywords.title")}
+      description={t("keywords.description")}
     >
       {!siteUrl ? (
         <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface)] px-6 py-16 text-center">
-          <p className="text-sm text-[var(--muted)]">
-            还没有网站。请先在 Dashboard 输入 URL。
-          </p>
+          <p className="text-sm text-[var(--muted)]">{t("common.noSiteYet")}</p>
           <Link
             href="/"
             className="mt-4 inline-flex text-sm font-medium text-[var(--brand-blue)] hover:underline"
           >
-            去输入网站 →
+            {t("common.goEnterSite")}
           </Link>
         </div>
       ) : (
@@ -416,12 +434,12 @@ export function KeywordsClient({ initialUrl }: { initialUrl: string | null }) {
 
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-5 py-4">
             <div>
-              <p className="text-sm text-[var(--muted)]">当前站点</p>
+              <p className="text-sm text-[var(--muted)]">{t("common.currentSite")}</p>
               <p className="mt-1 break-all font-medium text-[var(--fg)]">{siteUrl}</p>
               {data ? (
                 <p className="mt-1 text-xs text-[var(--muted)]">
-                  来源：{sourceLabel(data.source)}
-                  {fromCache ? " · 缓存" : ""}
+                  {t("common.source", { source: sourceLabel(data.source, t) })}
+                  {fromCache ? ` · ${t("common.cache")}` : ""}
                 </p>
               ) : null}
             </div>
@@ -432,13 +450,15 @@ export function KeywordsClient({ initialUrl }: { initialUrl: string | null }) {
                 onClick={() => void load(siteUrl, { force: true })}
                 className="rounded-lg border border-[var(--border)] px-3 py-2 text-sm font-medium text-[var(--fg)] hover:bg-[var(--surface-2)] disabled:opacity-60"
               >
-                {loading ? "分析中…" : "刷新关键词"}
+                {loading
+                  ? t("keywords.analyzing")
+                  : t("keywords.refreshKeywords")}
               </button>
               <Link
                 href={`/audit?url=${encodeURIComponent(siteUrl)}`}
                 className="rounded-lg bg-[var(--brand-blue)] px-3 py-2 text-sm font-medium text-white hover:bg-[var(--brand-blue-deep)]"
               >
-                查看网站分析
+                {t("keywords.viewAudit")}
               </Link>
             </div>
           </div>
@@ -461,14 +481,14 @@ export function KeywordsClient({ initialUrl }: { initialUrl: string | null }) {
                 onClick={() => void load(siteUrl, { force: true })}
                 className="rounded-md bg-[var(--brand-blue)] px-3 py-1.5 text-sm font-medium text-white disabled:opacity-60"
               >
-                重试
+                {t("common.retry")}
               </button>
             </div>
           ) : null}
 
           {loading && !data ? (
             <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface)] px-6 py-16 text-center text-sm text-[var(--muted)]">
-              正在抓取页面并生成关键词机会…
+              {t("keywords.loading")}
             </div>
           ) : null}
 
@@ -487,7 +507,7 @@ export function KeywordsClient({ initialUrl }: { initialUrl: string | null }) {
 
           {data && data.items.length === 0 && !loading ? (
             <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface)] px-6 py-16 text-center text-sm text-[var(--muted)]">
-              未识别到关键词机会，可尝试刷新或检查站点是否可访问。
+              {t("keywords.empty")}
             </div>
           ) : null}
         </div>

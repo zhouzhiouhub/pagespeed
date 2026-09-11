@@ -2,20 +2,23 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
-import { parseSiteUrl } from "@/lib/url";
+import { useT } from "@/components/i18n-provider";
+import { parseSiteUrl, urlErrorMessageKey } from "@/lib/url";
 import { SITE_STORAGE_KEY, writeSiteUrl } from "@/lib/site";
 
 export function SiteUrlForm({
   initialUrl = "",
-  cta = "开始分析",
+  cta,
 }: {
   initialUrl?: string;
   cta?: string;
 }) {
+  const t = useT();
   const router = useRouter();
   const [value, setValue] = useState(initialUrl);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const buttonLabel = cta ?? t("url.cta");
 
   useEffect(() => {
     if (initialUrl) return;
@@ -31,7 +34,7 @@ export function SiteUrlForm({
     e.preventDefault();
     const result = parseSiteUrl(value);
     if (!result.ok) {
-      setError(result.error);
+      setError(t(urlErrorMessageKey(result.code)));
       return;
     }
 
@@ -53,7 +56,7 @@ export function SiteUrlForm({
     >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-stretch">
         <label className="sr-only" htmlFor="site-url">
-          网站地址
+          {t("url.label")}
         </label>
         <div className="relative min-w-0 flex-1">
           <input
@@ -63,7 +66,7 @@ export function SiteUrlForm({
             inputMode="url"
             autoComplete="url"
             autoFocus
-            placeholder="输入网站 URL，例如 https://example.com"
+            placeholder={t("url.placeholder")}
             value={value}
             onChange={(e) => {
               setValue(e.target.value);
@@ -79,7 +82,7 @@ export function SiteUrlForm({
           disabled={pending}
           className="h-14 shrink-0 rounded-xl bg-[var(--brand-blue)] px-7 text-base font-semibold text-white transition-colors hover:bg-[var(--brand-blue-deep)] disabled:cursor-wait disabled:opacity-70"
         >
-          {pending ? "准备中…" : cta}
+          {pending ? t("url.preparing") : buttonLabel}
         </button>
       </div>
       {error ? (
@@ -87,9 +90,7 @@ export function SiteUrlForm({
           {error}
         </p>
       ) : (
-        <p className="mt-3 text-sm text-[var(--muted)]">
-          进入 Dashboard 后可运行多页爬取、查看分数与今日建议。GSC / GA4 可稍后连接。
-        </p>
+        <p className="mt-3 text-sm text-[var(--muted)]">{t("url.hint")}</p>
       )}
     </form>
   );

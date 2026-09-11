@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { parseSiteUrl } from "@/lib/url";
+import { parseSiteUrl, localeFromRequest, localizedUrlError } from "@/lib/url";
 import { patchAdviceItemState } from "@/server/advice/store";
 
 export const runtime = "nodejs";
@@ -20,7 +20,7 @@ export async function PATCH(request: Request) {
 
   const site = parseSiteUrl(parsedBody.data.url);
   if (!site.ok) {
-    return NextResponse.json({ error: site.error }, { status: 400 });
+    return NextResponse.json({ error: localizedUrlError(site.code, localeFromRequest(request)) }, { status: 400 });
   }
 
   const run = await patchAdviceItemState(

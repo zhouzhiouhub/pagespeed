@@ -1,3 +1,7 @@
+"use client";
+
+import { useT } from "@/components/i18n-provider";
+
 export function PageShell({
   title,
   description,
@@ -7,6 +11,7 @@ export function PageShell({
   description: string;
   children?: React.ReactNode;
 }) {
+  const t = useT();
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-8">
       <div className="mb-8 max-w-2xl">
@@ -17,7 +22,7 @@ export function PageShell({
       </div>
       {children ?? (
         <div className="rounded-lg border border-dashed border-[var(--border)] bg-[var(--surface)] px-6 py-16 text-center text-sm text-[var(--muted)]">
-          空态 · 接入网站后这里会显示真实数据
+          {t("common.emptyState")}
         </div>
       )}
     </div>

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { parseSiteUrl } from "@/lib/url";
+import { parseSiteUrl, localeFromRequest, localizedUrlError } from "@/lib/url";
 import { applyProxyDispatcher } from "@/server/http/proxy-bootstrap";
 import { generateAdviceActionPlan } from "@/server/agents/advice-plan";
 import { readAdviceRun } from "@/server/advice/store";
@@ -24,7 +24,7 @@ export async function POST(request: Request) {
 
   const site = parseSiteUrl(parsedBody.data.url);
   if (!site.ok) {
-    return NextResponse.json({ error: site.error }, { status: 400 });
+    return NextResponse.json({ error: localizedUrlError(site.code, localeFromRequest(request)) }, { status: 400 });
   }
 
   const run = await readAdviceRun(site.url);

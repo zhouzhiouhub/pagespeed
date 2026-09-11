@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { PageShell } from "@/components/page-shell";
+import { useT } from "@/components/i18n-provider";
 import {
   clearGeoCache,
   getCachedGeo,
@@ -13,6 +14,7 @@ import {
   type GeoPlan,
   type GeoResponse,
 } from "@/lib/geo-cache";
+import type { MessageKey } from "@/lib/i18n/messages";
 import { parseSiteUrl } from "@/lib/url";
 import { readSiteUrl, writeSiteUrl } from "@/lib/site";
 
@@ -27,9 +29,18 @@ function scoreColor(score: number) {
   return "text-[#d93025]";
 }
 
+const BREAKDOWN_LABELS: Record<keyof GeoBreakdown, MessageKey> = {
+  answerability: "geo.metricAnswerability",
+  structure: "geo.metricStructure",
+  trust: "geo.metricTrust",
+  ai_access: "geo.metricAiAccess",
+  entity: "geo.metricEntity",
+};
+
 function BreakdownBars({ breakdown }: { breakdown: GeoBreakdown }) {
+  const t = useT();
   const rows = (Object.keys(breakdown) as Array<keyof GeoBreakdown>).map(
-    (key) => ({ key, label: key, value: breakdown[key] }),
+    (key) => ({ key, label: t(BREAKDOWN_LABELS[key]), value: breakdown[key] }),
   );
   return (
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
@@ -133,6 +144,7 @@ function DetailPanel({
   item: GeoOpportunity;
   siteUrl: string;
 }) {
+  const t = useT();
   const [plan, setPlan] = useState<GeoPlan | null>(null);
   const [busy, setBusy] = useState(false);
   const [planError, setPlanError] = useState<string | null>(null);
@@ -153,12 +165,12 @@ function DetailPanel({
       });
       const json = (await res.json()) as GeoPlan & { error?: string };
       if (!res.ok) {
-        setPlanError(json.error ?? "生成方案失败");
+        setPlanError(json.error ?? t("geo.planFailed"));
         return;
       }
       setPlan(json);
     } catch {
-      setPlanError("网络错误，请稍后重试");
+      setPlanError(t("common.networkError"));
     } finally {
       setBusy(false);
     }
@@ -173,17 +185,17 @@ function DetailPanel({
 
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
         <div className="text-sm">
-          <p className="text-[var(--muted)]">page</p>
+          <p className="text-[var(--muted)]">{t("geo.detailPage")}</p>
           <p className="mt-0.5 font-mono text-[var(--fg)]">{item.page}</p>
         </div>
         <div className="text-sm">
-          <p className="text-[var(--muted)]">potential</p>
+          <p className="text-[var(--muted)]">{t("geo.detailPotential")}</p>
           <p className="mt-0.5 text-[#f4b400]">{stars(item.potential)}</p>
         </div>
       </div>
 
       <div className="mt-4 text-sm">
-        <p className="text-[var(--muted)]">missing</p>
+        <p className="text-[var(--muted)]">{t("geo.detailMissing")}</p>
         <div className="mt-2 flex flex-wrap gap-1.5">
           {item.missing.map((m) => (
             <span
@@ -197,12 +209,12 @@ function DetailPanel({
       </div>
 
       <div className="mt-4 text-sm">
-        <p className="text-[var(--muted)]">rationale</p>
+        <p className="text-[var(--muted)]">{t("geo.detailRationale")}</p>
         <p className="mt-1 leading-relaxed text-[var(--fg)]">{item.rationale}</p>
       </div>
 
       <div className="mt-4 text-sm">
-        <p className="text-[var(--muted)]">actions</p>
+        <p className="text-[var(--muted)]">{t("geo.detailActions")}</p>
         <ol className="mt-2 list-decimal space-y-1.5 pl-5 text-[var(--fg)]">
           {item.actions.map((action) => (
             <li key={action}>{action}</li>
@@ -216,7 +228,11 @@ function DetailPanel({
         onClick={() => void generatePlan()}
         className="mt-5 w-full rounded-lg bg-[var(--brand-blue)] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[var(--brand-blue-deep)] disabled:opacity-60 sm:w-auto"
       >
-        {busy ? "…" : plan ? "regen plan" : "generate plan"}
+        {busy
+          ? t("geo.generatingPlan")
+          : plan
+            ? t("geo.regeneratePlan")
+            : t("geo.generatePlan")}
       </button>
 
       {planError ? (
@@ -227,7 +243,7 @@ function DetailPanel({
         <div className="mt-5 space-y-5 border-t border-[var(--border)] pt-5 text-sm">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
-              plan · {plan.source}
+              {t("geo.planLabel")} · {plan.source}
               {plan.model ? ` · ${plan.model}` : ""}
             </p>
             <p className="mt-2 leading-relaxed text-[var(--fg)]">{plan.summary}</p>
@@ -258,7 +274,9 @@ function DetailPanel({
 
           {plan.schemaSnippet ? (
             <div>
-              <p className="font-medium text-[var(--fg)]">schema</p>
+              <p className="font-medium text-[var(--fg)]">
+                {t("geo.schemaSnippet")}
+              </p>
               <pre className="mt-1 overflow-x-auto whitespace-pre-wrap break-words rounded-lg bg-[var(--surface-2)] p-3 text-xs text-[var(--muted)]">
                 {plan.schemaSnippet}
               </pre>
@@ -267,7 +285,9 @@ function DetailPanel({
 
           {plan.llmsTxtSnippet ? (
             <div>
-              <p className="font-medium text-[var(--fg)]">llms.txt</p>
+              <p className="font-medium text-[var(--fg)]">
+                {t("geo.llmsTxtSnippet")}
+              </p>
               <pre className="mt-1 overflow-x-auto whitespace-pre-wrap break-words rounded-lg bg-[var(--surface-2)] p-3 text-xs text-[var(--muted)]">
                 {plan.llmsTxtSnippet}
               </pre>
@@ -275,7 +295,7 @@ function DetailPanel({
           ) : null}
 
           <div>
-            <p className="font-medium text-[var(--fg)]">steps</p>
+            <p className="font-medium text-[var(--fg)]">{t("geo.steps")}</p>
             <ol className="mt-2 grid gap-3 sm:grid-cols-2">
               {plan.steps.map((s) => (
                 <li
@@ -292,10 +312,10 @@ function DetailPanel({
           </div>
 
           <div>
-            <p className="font-medium text-[var(--fg)]">checklist</p>
+            <p className="font-medium text-[var(--fg)]">{t("geo.checklist")}</p>
             <ul className="mt-2 list-disc space-y-1 pl-5 text-[var(--muted)]">
-              {plan.checklist.map((t) => (
-                <li key={t}>{t}</li>
+              {plan.checklist.map((item) => (
+                <li key={item}>{item}</li>
               ))}
             </ul>
           </div>
@@ -307,6 +327,7 @@ function DetailPanel({
 
 export function GeoClient({ initialUrl }: { initialUrl: string | null }) {
   const router = useRouter();
+  const t = useT();
   const [siteUrl, setSiteUrl] = useState<string | null>(initialUrl);
   const [data, setData] = useState<GeoResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -328,44 +349,47 @@ export function GeoClient({ initialUrl }: { initialUrl: string | null }) {
     router.replace(`/geo?url=${encodeURIComponent(parsed.url)}`);
   }, [initialUrl, router]);
 
-  const load = useCallback(async (url: string, opts?: { force?: boolean }) => {
-    const force = opts?.force ?? false;
-    if (!force) {
-      const cached = getCachedGeo(url);
-      if (cached) {
-        setData(cached);
-        setFromCache(true);
-        setSelected(cached.items[0]?.id ?? null);
-        setError(null);
+  const load = useCallback(
+    async (url: string, opts?: { force?: boolean }) => {
+      const force = opts?.force ?? false;
+      if (!force) {
+        const cached = getCachedGeo(url);
+        if (cached) {
+          setData(cached);
+          setFromCache(true);
+          setSelected(cached.items[0]?.id ?? null);
+          setError(null);
+          setLoading(false);
+          return;
+        }
+      }
+
+      setLoading(true);
+      setError(null);
+      if (!force) {
+        setData(null);
+        setFromCache(false);
+      }
+
+      try {
+        const res = await fetch(`/api/geo?url=${encodeURIComponent(url)}`);
+        const json = (await res.json()) as GeoResponse & { error?: string };
+        if (!res.ok) {
+          setError(json.error ?? t("geo.analyzeFailed"));
+          return;
+        }
+        setCachedGeo(url, json);
+        setData(json);
+        setFromCache(false);
+        setSelected(json.items[0]?.id ?? null);
+      } catch {
+        setError(t("common.networkError"));
+      } finally {
         setLoading(false);
-        return;
       }
-    }
-
-    setLoading(true);
-    setError(null);
-    if (!force) {
-      setData(null);
-      setFromCache(false);
-    }
-
-    try {
-      const res = await fetch(`/api/geo?url=${encodeURIComponent(url)}`);
-      const json = (await res.json()) as GeoResponse & { error?: string };
-      if (!res.ok) {
-        setError(json.error ?? "GEO 分析失败");
-        return;
-      }
-      setCachedGeo(url, json);
-      setData(json);
-      setFromCache(false);
-      setSelected(json.items[0]?.id ?? null);
-    } catch {
-      setError("网络错误，请稍后重试");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    },
+    [t],
+  );
 
   useEffect(() => {
     if (!siteUrl) return;
@@ -376,34 +400,31 @@ export function GeoClient({ initialUrl }: { initialUrl: string | null }) {
     data?.items.find((item) => item.id === selected) ?? data?.items[0] ?? null;
 
   return (
-    <PageShell
-      title="GEO"
-      description="生成式引擎可见性：先抓取 URL 内容，再由模型判定页面用途与缺口（非写死清单）。"
-    >
+    <PageShell title={t("geo.title")} description={t("geo.description")}>
       {!siteUrl ? (
         <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface)] px-6 py-16 text-center">
-          <p className="text-sm text-[var(--muted)]">
-            还没有网站。请先在 Dashboard 输入 URL。
-          </p>
+          <p className="text-sm text-[var(--muted)]">{t("common.noSiteYet")}</p>
           <Link
             href="/"
             className="mt-4 inline-flex text-sm font-medium text-[var(--brand-blue)] hover:underline"
           >
-            去输入网站 →
+            {t("common.goEnterSite")}
           </Link>
         </div>
       ) : (
         <div className="space-y-5">
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-5 py-4">
             <div>
-              <p className="text-sm text-[var(--muted)]">当前站点</p>
+              <p className="text-sm text-[var(--muted)]">{t("common.currentSite")}</p>
               <p className="mt-1 break-all font-medium text-[var(--fg)]">{siteUrl}</p>
               {data ? (
                 <p className="mt-1 text-xs text-[var(--muted)]">
-                  {data.model ? `model ${data.model}` : "structural only"}
-                  {fromCache ? " · cache" : ""}
+                  {data.model
+                    ? t("geo.modelInfo", { model: data.model })
+                    : t("geo.structuralOnly")}
+                  {fromCache ? ` · ${t("common.cache")}` : ""}
                   {data.fetchedUrl && data.fetchedUrl !== data.url
-                    ? ` · fetched ${data.fetchedUrl}`
+                    ? t("geo.fetchedInfo", { url: data.fetchedUrl })
                     : ""}
                 </p>
               ) : null}
@@ -418,13 +439,13 @@ export function GeoClient({ initialUrl }: { initialUrl: string | null }) {
                 }}
                 className="rounded-lg border border-[var(--border)] px-3 py-2 text-sm font-medium text-[var(--fg)] hover:bg-[var(--surface-2)] disabled:opacity-60"
               >
-                {loading ? "分析中…" : "刷新 GEO"}
+                {loading ? t("geo.analyzing") : t("geo.refreshGeo")}
               </button>
               <Link
                 href={`/content?url=${encodeURIComponent(siteUrl)}`}
                 className="rounded-lg bg-[var(--brand-blue)] px-3 py-2 text-sm font-medium text-white hover:bg-[var(--brand-blue-deep)]"
               >
-                查看内容机会
+                {t("geo.viewContent")}
               </Link>
             </div>
           </div>
@@ -447,14 +468,14 @@ export function GeoClient({ initialUrl }: { initialUrl: string | null }) {
                 onClick={() => void load(siteUrl, { force: true })}
                 className="rounded-md bg-[var(--brand-blue)] px-3 py-1.5 text-sm font-medium text-white disabled:opacity-60"
               >
-                重试
+                {t("common.retry")}
               </button>
             </div>
           ) : null}
 
           {loading && !data ? (
             <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface)] px-6 py-16 text-center text-sm text-[var(--muted)]">
-              正在抓取页面并由模型判定 GEO…
+              {t("geo.loading")}
             </div>
           ) : null}
 
@@ -463,7 +484,7 @@ export function GeoClient({ initialUrl }: { initialUrl: string | null }) {
               <div className="grid gap-5 lg:grid-cols-[12rem_minmax(0,1.2fr)_minmax(0,1fr)]">
                 <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-5 py-5">
                   <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
-                    GEO score
+                    {t("geo.scoreLabel")}
                   </p>
                   <p
                     className={`mt-2 text-5xl font-semibold ${scoreColor(data.score)}`}
@@ -474,7 +495,7 @@ export function GeoClient({ initialUrl }: { initialUrl: string | null }) {
 
                 <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-5 py-5">
                   <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
-                    breakdown
+                    {t("geo.breakdown")}
                   </p>
                   <div className="mt-4">
                     <BreakdownBars breakdown={data.breakdown} />
@@ -483,11 +504,11 @@ export function GeoClient({ initialUrl }: { initialUrl: string | null }) {
 
                 <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-5 py-5 text-sm">
                   <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
-                    site access
+                    {t("geo.siteAccess")}
                   </p>
                   <dl className="mt-3 space-y-3">
                     <div>
-                      <dt className="text-[var(--muted)]">robots</dt>
+                      <dt className="text-[var(--muted)]">{t("geo.robots")}</dt>
                       <dd className="mt-0.5 font-medium text-[var(--fg)]">
                         {data.access.aiBotPolicy}
                       </dd>
@@ -496,9 +517,11 @@ export function GeoClient({ initialUrl }: { initialUrl: string | null }) {
                       </dd>
                     </div>
                     <div>
-                      <dt className="text-[var(--muted)]">llms.txt</dt>
+                      <dt className="text-[var(--muted)]">{t("geo.llmsTxt")}</dt>
                       <dd className="mt-0.5 font-medium text-[var(--fg)]">
-                        {data.access.llmsTxtPresent ? "found" : "missing"}
+                        {data.access.llmsTxtPresent
+                          ? t("geo.found")
+                          : t("geo.missing")}
                       </dd>
                       {data.access.llmsTxtPreview ? (
                         <dd className="mt-2 whitespace-pre-wrap break-words rounded-lg bg-[var(--surface-2)] p-2 text-xs text-[var(--muted)]">
@@ -512,11 +535,13 @@ export function GeoClient({ initialUrl }: { initialUrl: string | null }) {
 
               <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-5 py-5">
                 <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
-                  content judgment
+                  {t("geo.contentJudgment")}
                 </p>
                 <div className="mt-3 space-y-2 text-sm">
                   <p className="text-[var(--fg)]">
-                    <span className="text-[var(--muted)]">pageKind：</span>
+                    <span className="text-[var(--muted)]">
+                      {t("geo.pageKind")}
+                    </span>
                     {data.page.pageKindLabel}
                     <span className="ml-2 font-mono text-xs text-[var(--muted)]">
                       ({data.page.pageKind})
@@ -525,18 +550,23 @@ export function GeoClient({ initialUrl }: { initialUrl: string | null }) {
                   <p className="text-[var(--muted)]">{data.page.pageKindReason}</p>
                   {data.page.expectationLabels.length > 0 ? (
                     <p className="text-[var(--muted)]">
-                      expectations：{data.page.expectationLabels.join(" · ")}
+                      {t("geo.expectations")}{" "}
+                      {data.page.expectationLabels.join(" · ")}
                     </p>
                   ) : null}
                   {data.page.title ? (
                     <p className="text-[var(--fg)]">
-                      <span className="text-[var(--muted)]">title：</span>
+                      <span className="text-[var(--muted)]">
+                        {t("geo.titleLabel")}
+                      </span>
                       {data.page.title}
                     </p>
                   ) : null}
                   {data.page.h1.length > 0 ? (
                     <p className="text-[var(--fg)]">
-                      <span className="text-[var(--muted)]">h1：</span>
+                      <span className="text-[var(--muted)]">
+                        {t("geo.h1Label")}
+                      </span>
                       {data.page.h1.join(" / ")}
                     </p>
                   ) : null}
@@ -545,7 +575,8 @@ export function GeoClient({ initialUrl }: { initialUrl: string | null }) {
                   ) : null}
                   {data.page.schemaTypes.length > 0 ? (
                     <p className="font-mono text-xs text-[var(--muted)]">
-                      schema：{data.page.schemaTypes.join(", ")}
+                      {t("geo.schemaLabel")}
+                      {data.page.schemaTypes.join(", ")}
                     </p>
                   ) : null}
                 </div>
@@ -565,10 +596,10 @@ export function GeoClient({ initialUrl }: { initialUrl: string | null }) {
               <div>
                 <div className="mb-3">
                   <h3 className="text-base font-semibold text-[var(--fg)]">
-                    GEO opportunities
+                    {t("geo.opportunitiesTitle")}
                   </h3>
                   <p className="mt-0.5 text-sm text-[var(--muted)]">
-                    {data.items.length} items · from content analysis
+                    {t("geo.opportunitiesMeta", { count: data.items.length })}
                   </p>
                 </div>
 
@@ -585,7 +616,7 @@ export function GeoClient({ initialUrl }: { initialUrl: string | null }) {
                   </div>
                 ) : (
                   <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface)] px-6 py-16 text-center text-sm text-[var(--muted)]">
-                    No gaps returned for this URL.
+                    {t("geo.empty")}
                   </div>
                 )}
               </div>

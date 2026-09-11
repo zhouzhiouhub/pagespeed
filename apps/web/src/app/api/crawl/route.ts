@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { enqueueJob } from "@/server/jobs";
 import { getCrawlJob } from "@/server/crawler";
-import { parseSiteUrl } from "@/lib/url";
+import { parseSiteUrl, localeFromRequest, localizedUrlError } from "@/lib/url";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -20,7 +20,7 @@ export async function POST(request: Request) {
   }
   const siteUrl = parseSiteUrl(parsed.data.url);
   if (!siteUrl.ok) {
-    return NextResponse.json({ error: siteUrl.error }, { status: 400 });
+    return NextResponse.json({ error: localizedUrlError(siteUrl.code, localeFromRequest(request)) }, { status: 400 });
   }
 
   const result = await enqueueJob("crawl.full", {

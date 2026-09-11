@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { parseSiteUrl } from "@/lib/url";
+import { parseSiteUrl, localeFromRequest, localizedUrlError } from "@/lib/url";
 import { applyProxyDispatcher } from "@/server/http/proxy-bootstrap";
 import { composeDailyAdvice } from "@/server/agents/advice";
 import { readAdviceRun } from "@/server/advice/store";
@@ -19,7 +19,7 @@ export async function GET(request: Request) {
 
   const parsed = parseSiteUrl(rawUrl);
   if (!parsed.ok) {
-    return NextResponse.json({ error: parsed.error }, { status: 400 });
+    return NextResponse.json({ error: localizedUrlError(parsed.code, localeFromRequest(request)) }, { status: 400 });
   }
 
   try {
@@ -47,7 +47,7 @@ export async function POST(request: Request) {
   }
   const parsed = parseSiteUrl(rawUrl);
   if (!parsed.ok) {
-    return NextResponse.json({ error: parsed.error }, { status: 400 });
+    return NextResponse.json({ error: localizedUrlError(parsed.code, localeFromRequest(request)) }, { status: 400 });
   }
 
   try {

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getLatestAuditForUrl } from "@/server/sites/repo";
-import { parseSiteUrl } from "@/lib/url";
+import { parseSiteUrl, localeFromRequest, localizedUrlError } from "@/lib/url";
 
 export const runtime = "nodejs";
 
@@ -11,7 +11,7 @@ export async function GET(request: Request) {
   }
   const parsed = parseSiteUrl(url);
   if (!parsed.ok) {
-    return NextResponse.json({ error: parsed.error }, { status: 400 });
+    return NextResponse.json({ error: localizedUrlError(parsed.code, localeFromRequest(request)) }, { status: 400 });
   }
 
   const latest = await getLatestAuditForUrl(parsed.url);

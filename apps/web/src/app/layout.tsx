@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { AppShell } from "@/components/app-shell";
+import { I18nProvider } from "@/components/i18n-provider";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -16,7 +17,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Website Growth Agent",
   description:
-    "SEO + GEO + Analytics + Execution — 每天告诉你下一步做什么，并帮你做完。",
+    "SEO + GEO + Analytics + Execution — know what to do next every day, and get it done.",
   icons: {
     icon: "/icon.svg",
     apple: "/symbol.svg",
@@ -31,10 +32,13 @@ export default function RootLayout({
   return (
     <html
       lang="zh-CN"
+      suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col">
-        <AppShell>{children}</AppShell>
+        <I18nProvider>
+          <AppShell>{children}</AppShell>
+        </I18nProvider>
       </body>
     </html>
   );
