@@ -4,6 +4,9 @@
   "main": "apps/web/.open-next/worker.js",
   "compatibility_date": "2025-09-11",
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "vars": {
+    "CLOUDFLARE": "1"
+  },
   "assets": {
     "directory": "apps/web/.open-next/assets",
     "binding": "ASSETS"
