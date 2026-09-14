@@ -176,6 +176,14 @@ export function DashboardClient({ initialUrl }: { initialUrl: string | null }) {
           <div className="mt-10 w-full">
             <SiteUrlForm />
           </div>
+          <p className="mt-6 text-center text-sm text-[var(--muted)]">
+            <Link
+              href="/onboarding"
+              className="font-medium text-[var(--brand-blue)] underline-offset-2 hover:underline"
+            >
+              {t("dashboard.startOnboarding")}
+            </Link>
+          </p>
         </section>
       </div>
     );

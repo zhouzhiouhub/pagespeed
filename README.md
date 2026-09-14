@@ -72,6 +72,7 @@ cd apps/web && npm run dev
 | 路径 | 页面 |
 | --- | --- |
 | `/` | Dashboard（分数 / 接入状态 / 爬取） |
+| `/onboarding` | 接入向导（URL → GSC → GA4 → 扫描） |
 | `/audit` | 网站分析（PageSpeed） |
 | `/keywords` | 关键词机会 |
 | `/content` | 内容机会 |
@@ -139,6 +140,7 @@ Webagent/
 | [docs/07-v1-roadmap.md](docs/07-v1-roadmap.md) | V1–V4 路线图与开发任务 |
 | [docs/08-tech-stack.md](docs/08-tech-stack.md) | 技术选型 |
 | [docs/09-geo.md](docs/09-geo.md) | GEO 定义、分层与验收 |
+| [docs/10-v1-acceptance.md](docs/10-v1-acceptance.md) | V1 收尾进度与验收勾选表 |
 
 ## 版本路线（摘要）
 

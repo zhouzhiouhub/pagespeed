@@ -24,4 +24,5 @@ coverage/
 # Local integration data
 .data/
 apps/web/.data/
+docs/
 

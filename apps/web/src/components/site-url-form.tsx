@@ -42,7 +42,7 @@ export function SiteUrlForm({
     writeSiteUrl(result.url);
 
     startTransition(() => {
-      router.push(`/?url=${encodeURIComponent(result.url)}`);
+      router.push(`/onboarding?url=${encodeURIComponent(result.url)}`);
     });
   }
 

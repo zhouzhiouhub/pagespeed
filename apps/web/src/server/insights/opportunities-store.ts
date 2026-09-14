@@ -11,6 +11,13 @@ import { ensureSite } from "@/server/sites/repo";
 import type { CrawlResult } from "@/server/crawler";
 import type { KeywordOpportunity } from "@/server/keywords/opportunities";
 import type { GscStore } from "@/server/gsc/store";
+import {
+  classifyTrafficBand,
+  lookupPageTraffic,
+  shouldKeepTechIssue,
+  trafficScoreMultiplier,
+  type PageTrafficIndex,
+} from "@/server/insights/traffic-impact";
 
 export type OpportunityDraft = {
   type:
@@ -122,29 +129,61 @@ export function draftsFromKeywordOps(
   }));
 }
 
-export function draftsFromCrawl(crawl: CrawlResult): OpportunityDraft[] {
+export function draftsFromCrawl(
+  crawl: CrawlResult,
+  traffic?: PageTrafficIndex | null,
+): OpportunityDraft[] {
+  const index = traffic ?? { hasData: false, byPath: new Map() };
+
   return crawl.issues
     .filter((i) => i.severity === "critical" || i.severity === "warning")
-    .slice(0, 40)
-    .map((issue) => ({
-      type: (issue.code.startsWith("geo_")
-        ? "geo_readiness"
-        : "tech_seo") as OpportunityDraft["type"],
-      title: issue.message,
-      description: `${issue.code} on ${issue.pageUrl}`,
-      pageUrl: issue.pageUrl,
-      score: issue.severity === "critical" ? 5 : 3,
-      impact: issue.severity === "critical" ? 4 : 2,
-      confidence: 0.8,
-      effort: 2,
-      payload: { code: issue.code, severity: issue.severity, ...issue.context },
-      evidence: [
-        {
-          kind: "rule" as const,
-          ref: { code: issue.code, page: issue.pageUrl, context: issue.context },
+    .filter((issue) => {
+      const stats = lookupPageTraffic(index, issue.pageUrl);
+      const band = classifyTrafficBand(stats, index.hasData);
+      return shouldKeepTechIssue({ severity: issue.severity, band });
+    })
+    .map((issue) => {
+      const stats = lookupPageTraffic(index, issue.pageUrl);
+      const band = classifyTrafficBand(stats, index.hasData);
+      const mult = trafficScoreMultiplier(band);
+      const baseScore = issue.severity === "critical" ? 5 : 3;
+      const baseImpact = issue.severity === "critical" ? 4 : 2;
+      return {
+        type: (issue.code.startsWith("geo_")
+          ? "geo_readiness"
+          : "tech_seo") as OpportunityDraft["type"],
+        title: issue.message,
+        description: `${issue.code} on ${issue.pageUrl}`,
+        pageUrl: issue.pageUrl,
+        score: Math.max(1, Math.round(baseScore * mult * 10) / 10),
+        impact: Math.max(1, Math.round(baseImpact * mult * 10) / 10),
+        confidence: band === "unknown" ? 0.8 : band === "none" ? 0.55 : 0.85,
+        effort: 2,
+        payload: {
+          code: issue.code,
+          severity: issue.severity,
+          trafficBand: band,
+          sessions: stats.sessions,
+          impressions: stats.impressions,
+          ...issue.context,
         },
-      ],
-    }));
+        evidence: [
+          {
+            kind: "rule" as const,
+            ref: {
+              code: issue.code,
+              page: issue.pageUrl,
+              context: issue.context,
+              trafficBand: band,
+              sessions: stats.sessions,
+              impressions: stats.impressions,
+            },
+          },
+        ],
+      };
+    })
+    .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
+    .slice(0, 40);
 }
 
 export async function persistOpportunities(

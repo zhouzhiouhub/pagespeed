@@ -15,6 +15,7 @@ import {
   draftsFromKeywordOps,
   persistOpportunities,
 } from "@/server/insights/opportunities-store";
+import { buildPageTrafficIndex } from "@/server/insights/traffic-impact";
 import { buildKeywordOpportunities } from "@/server/keywords/opportunities";
 import { extractPageSignals } from "@/server/keywords/extract";
 import { fetchText } from "@/server/http/fetch";
@@ -60,7 +61,13 @@ async function runCrawlFull(payload: Record<string, unknown>): Promise<JobResult
     maxPages,
   });
   const persisted = await persistCrawlResult(site, result);
-  const opp = await persistOpportunities(seedUrl, draftsFromCrawl(result));
+
+  const [ga4, gsc] = await Promise.all([readGa4Store(), readGscStore()]);
+  const traffic = buildPageTrafficIndex({ ga4, gsc });
+  const opp = await persistOpportunities(
+    seedUrl,
+    draftsFromCrawl(result, traffic),
+  );
   return {
     accepted: true,
     name: "crawl.full",
