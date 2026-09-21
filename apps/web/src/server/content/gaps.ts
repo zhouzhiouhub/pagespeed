@@ -156,7 +156,7 @@ async function aiGaps(
   siteUrl: string,
   signals: PageSignals,
   locale: Locale,
-): Promise<ContentGap[]> {
+): Promise<{ items: ContentGap[]; model: string }> {
   const prompt = `You are the Website Growth Content Agent. From homepage signals, find content gaps that should be written but are missing (not edits to existing pages).
 Site: ${siteUrl}
 Page signals:
@@ -173,7 +173,7 @@ Requirements:
 5. ${llmLanguageRule(locale)}
 6. JSON only`;
 
-  const { text } = await generateText(prompt);
+  const { text, model } = await generateText(prompt);
   const raw = safeParseJsonArray<unknown>(text);
   const items: ContentGap[] = [];
 
@@ -198,7 +198,7 @@ Requirements:
   if (items.length === 0) {
     throw new Error("AI returned no valid content gaps");
   }
-  return items.slice(0, 12);
+  return { items: items.slice(0, 12), model };
 }
 
 export async function buildContentGaps(
@@ -281,11 +281,11 @@ export async function buildContentGaps(
   const hasLlm = Boolean(process.env.LLM_API_KEY?.trim());
   if (hasLlm) {
     try {
-      const items = await aiGaps(siteUrl, signals, locale);
+      const { items, model } = await aiGaps(siteUrl, signals, locale);
       return {
         items,
         source: "ai",
-        model: process.env.LLM_MODEL?.trim() || "gemini-3.6-flash",
+        model,
         warning: t("server.content.warnAi"),
       };
     } catch (err) {

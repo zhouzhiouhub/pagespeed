@@ -115,7 +115,7 @@ async function aiOpportunities(
   siteUrl: string,
   signals: PageSignals,
   locale: Locale,
-): Promise<KeywordOpportunity[]> {
+): Promise<{ items: KeywordOpportunity[]; model: string }> {
   const prompt = `You are an SEO Keyword Agent. From page signals, produce keyword opportunities worth winning (not a keyword dump).
 Site: ${siteUrl}
 Page signals JSON:
@@ -129,7 +129,7 @@ Requirements:
 5. ${llmLanguageRule(locale)}
 6. JSON only`;
 
-  const { text } = await generateText(prompt);
+  const { text, model } = await generateText(prompt);
   const raw = safeParseJsonArray<unknown>(text);
   const items: KeywordOpportunity[] = [];
 
@@ -153,7 +153,7 @@ Requirements:
   if (items.length === 0) {
     throw new Error("AI returned no valid keyword opportunities");
   }
-  return items.slice(0, 12);
+  return { items: items.slice(0, 12), model };
 }
 
 export async function buildKeywordOpportunities(
@@ -172,11 +172,15 @@ export async function buildKeywordOpportunities(
   const hasLlm = Boolean(process.env.LLM_API_KEY?.trim());
   if (hasLlm) {
     try {
-      const items = await aiOpportunities(siteUrl, signals, locale);
+      const { items, model } = await aiOpportunities(
+        siteUrl,
+        signals,
+        locale,
+      );
       return {
         items,
         source: "ai",
-        model: process.env.LLM_MODEL?.trim() || "gemini-3.6-flash",
+        model,
         warning: t("server.keywords.warnAiEstimate"),
       };
     } catch (err) {
