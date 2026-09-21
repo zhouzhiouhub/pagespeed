@@ -8,20 +8,27 @@ import { SITE_STORAGE_KEY, writeSiteUrl } from "@/lib/site";
 
 export function SiteUrlForm({
   initialUrl = "",
-  cta,
+  hint,
+  autoFocus = true,
+  onConfirm,
 }: {
   initialUrl?: string;
-  cta?: string;
+  hint?: string;
+  autoFocus?: boolean;
+  onConfirm?: (url: string) => void;
 }) {
   const t = useT();
   const router = useRouter();
   const [value, setValue] = useState(initialUrl);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
-  const buttonLabel = cta ?? t("url.cta");
+  const hintText = hint ?? t("url.hint");
 
   useEffect(() => {
-    if (initialUrl) return;
+    if (initialUrl) {
+      setValue(initialUrl);
+      return;
+    }
     try {
       const saved = localStorage.getItem(SITE_STORAGE_KEY);
       if (saved) setValue(saved);
@@ -32,17 +39,24 @@ export function SiteUrlForm({
 
   function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const result = parseSiteUrl(value);
+    const raw = new FormData(e.currentTarget).get("url");
+    const input = typeof raw === "string" ? raw : value;
+    const result = parseSiteUrl(input);
     if (!result.ok) {
       setError(t(urlErrorMessageKey(result.code)));
       return;
     }
 
     setError(null);
+    setValue(result.url);
     writeSiteUrl(result.url);
 
     startTransition(() => {
-      router.push(`/onboarding?url=${encodeURIComponent(result.url)}`);
+      if (onConfirm) {
+        onConfirm(result.url);
+        return;
+      }
+      router.push(`/?url=${encodeURIComponent(result.url)}`);
     });
   }
 
@@ -54,35 +68,33 @@ export function SiteUrlForm({
       className="w-full"
       noValidate
     >
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-stretch">
+      <div className="flex items-stretch gap-3">
         <label className="sr-only" htmlFor="site-url">
           {t("url.label")}
         </label>
-        <div className="relative min-w-0 flex-1">
-          <input
-            id="site-url"
-            name="url"
-            type="url"
-            inputMode="url"
-            autoComplete="url"
-            autoFocus
-            placeholder={t("url.placeholder")}
-            value={value}
-            onChange={(e) => {
-              setValue(e.target.value);
-              if (error) setError(null);
-            }}
-            aria-invalid={Boolean(error)}
-            aria-describedby={error ? "site-url-error" : undefined}
-            className="h-14 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 text-base text-[var(--fg)] shadow-[0_1px_2px_rgba(11,23,48,0.04)] outline-none transition-[border-color,box-shadow] placeholder:text-[var(--muted)] focus:border-[var(--brand-blue)] focus:shadow-[0_0_0_3px_rgba(22,119,255,0.18)]"
-          />
-        </div>
+        <input
+          id="site-url"
+          name="url"
+          type="url"
+          inputMode="url"
+          autoComplete="url"
+          autoFocus={autoFocus}
+          placeholder={t("url.placeholder")}
+          value={value}
+          onChange={(e) => {
+            setValue(e.target.value);
+            if (error) setError(null);
+          }}
+          aria-invalid={Boolean(error)}
+          aria-describedby={error ? "site-url-error" : undefined}
+          className="h-12 min-w-0 flex-1 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 text-base text-[var(--fg)] shadow-[0_1px_2px_rgba(11,23,48,0.04)] outline-none transition-[border-color,box-shadow] placeholder:text-[var(--muted)] focus:border-[var(--brand-blue)] focus:shadow-[0_0_0_3px_rgba(22,119,255,0.18)]"
+        />
         <button
           type="submit"
           disabled={pending}
-          className="h-14 shrink-0 rounded-xl bg-[var(--brand-blue)] px-7 text-base font-semibold text-white transition-colors hover:bg-[var(--brand-blue-deep)] disabled:cursor-wait disabled:opacity-70"
+          className="h-12 shrink-0 rounded-xl bg-[var(--brand-blue)] px-5 text-sm font-semibold text-white transition-colors hover:bg-[var(--brand-blue-deep)] disabled:cursor-wait disabled:opacity-70"
         >
-          {pending ? t("url.preparing") : buttonLabel}
+          {pending ? t("url.preparing") : t("url.confirm")}
         </button>
       </div>
       {error ? (
@@ -90,7 +102,7 @@ export function SiteUrlForm({
           {error}
         </p>
       ) : (
-        <p className="mt-3 text-sm text-[var(--muted)]">{t("url.hint")}</p>
+        <p className="mt-3 text-sm text-[var(--muted)]">{hintText}</p>
       )}
     </form>
   );

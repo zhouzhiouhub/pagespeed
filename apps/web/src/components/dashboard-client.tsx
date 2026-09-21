@@ -151,76 +151,68 @@ export function DashboardClient({ initialUrl }: { initialUrl: string | null }) {
     }
   }
 
-  if (!siteUrl) {
-    return (
-      <div className="relative flex flex-1 flex-col overflow-hidden">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_0%,rgba(25,217,255,0.14),transparent_55%),radial-gradient(ellipse_at_80%_20%,rgba(22,119,255,0.10),transparent_45%),linear-gradient(180deg,var(--surface)_0%,var(--background)_48%,var(--background)_100%)]"
-        />
-        <section className="relative mx-auto flex w-full max-w-3xl flex-1 flex-col items-center justify-center px-4 py-16 sm:py-24">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/logo.svg"
-            alt="Kinolin"
-            width={220}
-            height={60}
-            className="h-10 w-auto sm:h-12"
-          />
-          <h1 className="mt-10 text-center text-3xl font-semibold tracking-tight text-[var(--ink)] sm:text-4xl">
-            {t("dashboard.heroTitle")}
-          </h1>
-          <p className="mt-4 max-w-xl text-center text-base text-[var(--muted)] sm:text-lg">
-            {t("dashboard.heroSubtitle")}
-          </p>
-          <div className="mt-10 w-full">
-            <SiteUrlForm />
-          </div>
-          <p className="mt-6 text-center text-sm text-[var(--muted)]">
-            <Link
-              href="/onboarding"
-              className="font-medium text-[var(--brand-blue)] underline-offset-2 hover:underline"
-            >
-              {t("dashboard.startOnboarding")}
-            </Link>
-          </p>
-        </section>
-      </div>
-    );
-  }
-
   const scores = data?.scores;
-  const links = [
-    {
-      href: `/audit?url=${encodeURIComponent(siteUrl)}`,
-      label: t("dashboard.linkAudit"),
-    },
-    {
-      href: `/keywords?url=${encodeURIComponent(siteUrl)}`,
-      label: t("dashboard.linkKeywords"),
-    },
-    {
-      href: `/content?url=${encodeURIComponent(siteUrl)}`,
-      label: t("dashboard.linkContent"),
-    },
-    { href: `/geo?url=${encodeURIComponent(siteUrl)}`, label: t("nav.geo") },
-    {
-      href: `/advice?url=${encodeURIComponent(siteUrl)}`,
-      label: t("dashboard.linkAdvice"),
-    },
-  ];
+  const links = siteUrl
+    ? [
+        {
+          href: `/audit?url=${encodeURIComponent(siteUrl)}`,
+          label: t("dashboard.linkAudit"),
+        },
+        {
+          href: `/keywords?url=${encodeURIComponent(siteUrl)}`,
+          label: t("dashboard.linkKeywords"),
+        },
+        {
+          href: `/content?url=${encodeURIComponent(siteUrl)}`,
+          label: t("dashboard.linkContent"),
+        },
+        { href: `/geo?url=${encodeURIComponent(siteUrl)}`, label: t("nav.geo") },
+        {
+          href: `/advice?url=${encodeURIComponent(siteUrl)}`,
+          label: t("dashboard.linkAdvice"),
+        },
+      ]
+    : [];
 
   return (
     <div className="mx-auto w-full max-w-5xl flex-1 px-4 py-10">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <p className="text-sm text-[var(--muted)]">Dashboard</p>
-          <h1 className="mt-1 text-2xl font-semibold text-[var(--fg)]">
-            {data?.site.name ?? t("dashboard.siteFallback")}
-          </h1>
+      <div>
+        <p className="text-sm text-[var(--muted)]">Dashboard</p>
+        <h1 className="mt-1 text-2xl font-semibold text-[var(--fg)]">
+          {siteUrl
+            ? (data?.site.name ?? t("dashboard.siteFallback"))
+            : t("dashboard.heroTitle")}
+        </h1>
+        {siteUrl ? (
           <p className="mt-1 break-all text-sm text-[var(--muted)]">{siteUrl}</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
+        ) : (
+          <p className="mt-2 max-w-xl text-sm text-[var(--muted)]">
+            {t("dashboard.heroSubtitle")}
+          </p>
+        )}
+      </div>
+
+      <div className="mt-6 max-w-3xl">
+        <SiteUrlForm
+          initialUrl={siteUrl ?? ""}
+          hint={siteUrl ? t("dashboard.switchHint") : undefined}
+          autoFocus={!siteUrl}
+          onConfirm={(url) => {
+            writeSiteUrl(url);
+            setAnalytics(null);
+            if (url !== siteUrl) {
+              setData(null);
+              setSiteUrl(url);
+            } else {
+              void load(url);
+            }
+            router.replace(`/?url=${encodeURIComponent(url)}`);
+          }}
+        />
+      </div>
+
+      {siteUrl ? (
+        <div className="mt-4 flex flex-wrap gap-2">
           <button
             type="button"
             disabled={crawling}
@@ -237,17 +229,17 @@ export function DashboardClient({ initialUrl }: { initialUrl: string | null }) {
           >
             {t("common.refresh")}
           </button>
-          <Link
-            href="/"
-            onClick={() => {
-              writeSiteUrl("");
-            }}
-            className="rounded-lg border border-[var(--border)] px-3 py-2 text-sm text-[var(--muted)] hover:bg-[var(--surface-2)]"
-          >
-            {t("dashboard.changeSite")}
-          </Link>
         </div>
-      </div>
+      ) : (
+        <p className="mt-4 text-sm text-[var(--muted)]">
+          <Link
+            href="/onboarding"
+            className="font-medium text-[var(--brand-blue)] underline-offset-2 hover:underline"
+          >
+            {t("dashboard.startOnboarding")}
+          </Link>
+        </p>
+      )}
 
       {error ? (
         <p className="mt-4 rounded-lg border border-[#f5c2c0] bg-[#fef2f1] px-4 py-3 text-sm text-[#d93025]">
@@ -255,6 +247,8 @@ export function DashboardClient({ initialUrl }: { initialUrl: string | null }) {
         </p>
       ) : null}
 
+      {siteUrl ? (
+      <>
       <div className="mt-8 grid gap-4 sm:grid-cols-3">
         {[
           { label: "SEO", value: scores?.seo },
@@ -442,6 +436,8 @@ export function DashboardClient({ initialUrl }: { initialUrl: string | null }) {
           </Link>
         ))}
       </nav>
+      </>
+      ) : null}
     </div>
   );
 }
