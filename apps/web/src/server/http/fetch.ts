@@ -1,22 +1,11 @@
 import { Agent, ProxyAgent, fetch as undiciFetch } from "undici";
-import { applyProxyDispatcher } from "@/server/http/proxy-bootstrap";
+import {
+  applyProxyDispatcher,
+  resolveProxyUrl,
+} from "@/server/http/proxy-bootstrap";
 import { isCloudflareRuntime } from "@/server/runtime";
 
 applyProxyDispatcher();
-
-function resolveProxyUrl(): string | null {
-  const candidates = [
-    process.env.PAGESPEED_HTTP_PROXY,
-    process.env.HTTPS_PROXY,
-    process.env.HTTP_PROXY,
-    process.env.ALL_PROXY,
-  ];
-  for (const value of candidates) {
-    const trimmed = value?.trim();
-    if (trimmed) return trimmed;
-  }
-  return null;
-}
 
 type Dispatcher = Agent | ProxyAgent;
 let shared: Dispatcher | null = null;

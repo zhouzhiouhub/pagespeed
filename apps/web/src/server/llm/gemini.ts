@@ -90,6 +90,8 @@ export async function generateText(prompt: string): Promise<LlmJsonResult> {
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       errors.push(`${model}: ${message}`);
+      // Same exit IP for every model; extra attempts cannot unblock a region.
+      if (/location is not supported/i.test(message)) break;
     }
   }
 
