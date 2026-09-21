@@ -21,7 +21,8 @@ export async function GET(request: Request) {
   }
 
   try {
-    const result = await analyzeGeo(parsed.url);
+    const locale = localeFromRequest(request);
+    const result = await analyzeGeo(parsed.url, locale);
     return NextResponse.json(result);
   } catch (err) {
     const message = err instanceof Error ? err.message : "GEO 分析失败";

@@ -11,6 +11,8 @@ import {
   type GeoOpportunity,
   type GeoSignalChip,
 } from "@/server/geo/llm-analyze";
+import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/locale";
+import { translate } from "@/lib/i18n/messages";
 
 export type GeoAnalysis = {
   url: string;
@@ -81,7 +83,10 @@ function pathOf(url: string): string {
   }
 }
 
-export async function analyzeGeo(siteUrl: string): Promise<GeoAnalysis> {
+export async function analyzeGeo(
+  siteUrl: string,
+  locale: Locale = DEFAULT_LOCALE,
+): Promise<GeoAnalysis> {
   const pageRes = await fetchText(siteUrl, { timeoutMs: 25_000 });
   if (!pageRes.ok) {
     throw new Error(`抓取站点失败（HTTP ${pageRes.status}）`);
@@ -100,12 +105,10 @@ export async function analyzeGeo(siteUrl: string): Promise<GeoAnalysis> {
 
   const llm = await analyzeGeoWithLlm(siteUrl, pagePath, signals, access);
 
-  const warningParts = [
-    "Pipeline: fetch URL → structural extract → LLM content judgment → gaps.",
-    "Scores are GEO Readiness, not live AI citation.",
-    "V1 analyzes the URL you entered only.",
-  ];
-  if (llm.warning) warningParts.unshift(llm.warning);
+  const warningParts = [translate(locale, "geo.pipelineHint")];
+  if (llm.warning && !/unenv|fs\.mkdir|not implemented/i.test(llm.warning)) {
+    warningParts.unshift(llm.warning);
+  }
 
   return {
     url: siteUrl,

@@ -1,10 +1,9 @@
 import { and, desc, eq } from "drizzle-orm";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import path from "node:path";
 import { db } from "@/server/db";
 import { isDatabaseAvailable } from "@/server/db/ready";
 import { adviceItems, adviceRuns } from "@/server/db/schema";
 import { ensureSite } from "@/server/sites/repo";
+import { readJsonStore, writeJsonStore } from "@/server/storage/json-store";
 
 export type AdviceUserState = "open" | "acted" | "snoozed" | "dismissed";
 
@@ -41,24 +40,14 @@ type AdviceStore = {
 };
 
 const EMPTY: AdviceStore = { bySite: {} };
-
-function storePath() {
-  return path.join(process.cwd(), ".data", "advice-store.json");
-}
+const STORE_KEY = "advice-store";
 
 async function readStore(): Promise<AdviceStore> {
-  try {
-    const raw = await readFile(storePath(), "utf8");
-    return { ...EMPTY, ...(JSON.parse(raw) as Partial<AdviceStore>) };
-  } catch {
-    return { ...EMPTY };
-  }
+  return readJsonStore(STORE_KEY, EMPTY);
 }
 
 async function writeStore(next: AdviceStore): Promise<void> {
-  const dir = path.dirname(storePath());
-  await mkdir(dir, { recursive: true });
-  await writeFile(storePath(), JSON.stringify(next, null, 2), "utf8");
+  await writeJsonStore(STORE_KEY, next);
 }
 
 function toDbPriority(

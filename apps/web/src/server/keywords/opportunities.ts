@@ -187,9 +187,12 @@ export async function buildKeywordOpportunities(
       const message = err instanceof Error ? err.message : "LLM failed";
       const items = heuristicOpportunities(siteUrl, signals, locale);
       const locationBlocked = /location is not supported/i.test(message);
+      const fsStub = /unenv|fs\.mkdir|not implemented/i.test(message);
       const warning = locationBlocked
         ? t("server.keywords.warnLocation")
-        : t("server.keywords.warnAiFail", { message });
+        : fsStub
+          ? t("server.keywords.warnAiEstimate")
+          : t("server.keywords.warnAiFail", { message });
       return {
         items,
         source: "heuristic",

@@ -1,6 +1,4 @@
 import { eq } from "drizzle-orm";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import path from "node:path";
 import { db } from "@/server/db";
 import { isDatabaseAvailable } from "@/server/db/ready";
 import {
@@ -8,6 +6,7 @@ import {
   opportunityEvidence,
 } from "@/server/db/schema";
 import { ensureSite } from "@/server/sites/repo";
+import { readJsonStore, writeJsonStore } from "@/server/storage/json-store";
 import type { CrawlResult } from "@/server/crawler";
 import type { KeywordOpportunity } from "@/server/keywords/opportunities";
 import type { GscStore } from "@/server/gsc/store";
@@ -61,23 +60,15 @@ type FileOppStore = {
   >;
 };
 
-function filePath() {
-  return path.join(process.cwd(), ".data", "opportunities-store.json");
-}
+const EMPTY: FileOppStore = { bySite: {} };
+const STORE_KEY = "opportunities-store";
 
 async function readFileStore(): Promise<FileOppStore> {
-  try {
-    const raw = await readFile(filePath(), "utf8");
-    return { bySite: {}, ...(JSON.parse(raw) as Partial<FileOppStore>) };
-  } catch {
-    return { bySite: {} };
-  }
+  return readJsonStore(STORE_KEY, EMPTY);
 }
 
 async function writeFileStore(next: FileOppStore) {
-  const dir = path.dirname(filePath());
-  await mkdir(dir, { recursive: true });
-  await writeFile(filePath(), JSON.stringify(next, null, 2), "utf8");
+  await writeJsonStore(STORE_KEY, next);
 }
 
 export function draftsFromGsc(store: GscStore): OpportunityDraft[] {

@@ -8,14 +8,29 @@ type KvLike = {
   put(key: string, value: string): Promise<void>;
 };
 
+const CF_CTX = Symbol.for("__cloudflare-context__");
+
+function kvFromGlobal(): KvLike | null {
+  const ctx = (
+    globalThis as Record<symbol, { env?: { WEBAGENT_KV?: KvLike } }>
+  )[CF_CTX];
+  return ctx?.env?.WEBAGENT_KV ?? null;
+}
+
+function workersLike(): boolean {
+  if (isCloudflareRuntime()) return true;
+  if (kvFromGlobal()) return true;
+  return false;
+}
+
 async function getKv(): Promise<KvLike | null> {
+  const fromGlobal = kvFromGlobal();
+  if (fromGlobal) return fromGlobal;
   try {
     const { env } = await getCloudflareContext({ async: true });
-    const ns = env.WEBAGENT_KV;
-    if (!ns) return null;
-    return ns;
+    return env.WEBAGENT_KV ?? kvFromGlobal();
   } catch {
-    return null;
+    return kvFromGlobal();
   }
 }
 
@@ -38,6 +53,8 @@ export async function readJsonStore<T extends object>(
     }
   }
 
+  if (workersLike()) return { ...fallback };
+
   try {
     const raw = await readFile(filePath(key), "utf8");
     return { ...fallback, ...(JSON.parse(raw) as Partial<T>) };
@@ -55,7 +72,7 @@ export async function writeJsonStore<T>(key: string, value: T): Promise<void> {
       return;
     }
 
-    if (isCloudflareRuntime()) {
+    if (workersLike()) {
       console.warn(`[json-store] WEBAGENT_KV unbound; skip persist ${key}`);
       return;
     }
@@ -64,9 +81,8 @@ export async function writeJsonStore<T>(key: string, value: T): Promise<void> {
     await mkdir(path.dirname(fp), { recursive: true });
     await writeFile(fp, serialized, "utf8");
   } catch (err) {
-    console.warn(
-      `[json-store] persist failed for ${key}`,
-      err instanceof Error ? err.message : err,
-    );
+    const message = err instanceof Error ? err.message : String(err);
+    if (/unenv|not implemented/i.test(message)) return;
+    console.warn(`[json-store] persist failed for ${key}`, message);
   }
 }

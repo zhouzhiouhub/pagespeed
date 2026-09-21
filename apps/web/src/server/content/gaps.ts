@@ -292,13 +292,16 @@ export async function buildContentGaps(
       const message = err instanceof Error ? err.message : "LLM failed";
       const items = heuristicGaps(siteUrl, signals, locale);
       const locationBlocked = /location is not supported/i.test(message);
+      const fsStub = /unenv|fs\.mkdir|not implemented/i.test(message);
       return {
         items,
         source: "heuristic",
         model: null,
         warning: locationBlocked
           ? t("server.content.warnLocation")
-          : t("server.content.warnAiFail", { message }),
+          : fsStub
+            ? t("server.content.warnAi")
+            : t("server.content.warnAiFail", { message }),
       };
     }
   }

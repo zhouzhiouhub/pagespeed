@@ -258,6 +258,8 @@ export const messages = {
       llmsTxtSnippet: "llms.txt",
       steps: "执行步骤",
       checklist: "清单",
+      pipelineHint:
+        "当前分数是 GEO 就绪度（页面结构是否便于 AI 引用），不是实时引用量；仅分析你输入的这一条 URL。",
     },
     advice: {
       title: "今日增长建议",
@@ -692,6 +694,8 @@ export const messages = {
       llmsTxtSnippet: "llms.txt",
       steps: "steps",
       checklist: "checklist",
+      pipelineHint:
+        "Score is GEO readiness (how citable this page is), not live AI citations. V1 analyzes the URL you entered.",
     },
     advice: {
       title: "Today’s growth advice",

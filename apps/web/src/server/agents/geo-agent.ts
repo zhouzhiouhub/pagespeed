@@ -28,7 +28,7 @@ export async function runGeoAgent(
   const candidates: LightAgentCandidate[] = [];
 
   try {
-    const geo = await analyzeGeo(siteUrl);
+    const geo = await analyzeGeo(siteUrl, locale);
     result.sources.push("geo");
     result.sources.push("agent:geo");
     if (geo.warning) result.warnings.push(geo.warning);
