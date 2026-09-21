@@ -5,7 +5,8 @@
   "compatibility_date": "2025-09-11",
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
   "vars": {
-    "CLOUDFLARE": "1"
+    "CLOUDFLARE": "1",
+    "AUTH_TRUST_HOST": "true"
   },
   "kv_namespaces": [
     {

@@ -29,7 +29,7 @@ export function resolveProxyUrl(): string | null {
  */
 export function applyProxyDispatcher() {
   if (typeof window !== "undefined") return;
-  if (isCloudflareRuntime()) {
+  if (process.env.CLOUDFLARE === "1" || isCloudflareRuntime()) {
     appliedKey = "cloudflare";
     return;
   }
