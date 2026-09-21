@@ -102,7 +102,7 @@ export function OnboardingClient({
   function finish() {
     if (!siteUrl) return;
     writeOnboardingDone(true);
-    router.push(`/?url=${encodeURIComponent(siteUrl)}`);
+    router.push(`/audit?url=${encodeURIComponent(siteUrl)}`);
   }
 
   return (
@@ -288,7 +288,7 @@ export function OnboardingClient({
       </div>
 
       <p className="mt-6 text-center text-sm text-[var(--muted)]">
-        <Link href="/" className="underline-offset-2 hover:underline">
+        <Link href="/audit" className="underline-offset-2 hover:underline">
           {t("onboarding.backDashboard")}
         </Link>
       </p>

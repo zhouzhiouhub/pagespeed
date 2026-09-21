@@ -1,17 +1,13 @@
-import { DashboardClient } from "@/components/dashboard-client";
-import { parseSiteUrl } from "@/lib/url";
+import { redirect } from "next/navigation";
 
-export default async function DashboardPage({
+export default async function HomePage({
   searchParams,
 }: {
   searchParams: Promise<{ url?: string }>;
 }) {
   const params = await searchParams;
-  let initialUrl: string | null = null;
   if (params.url) {
-    const parsed = parseSiteUrl(params.url);
-    if (parsed.ok) initialUrl = parsed.url;
+    redirect(`/audit?url=${encodeURIComponent(params.url)}`);
   }
-
-  return <DashboardClient initialUrl={initialUrl} />;
+  redirect("/audit");
 }

@@ -342,7 +342,7 @@ export function AdviceClient({ initialUrl }: { initialUrl: string | null }) {
         <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface)] px-6 py-16 text-center">
           <p className="text-sm text-[var(--muted)]">{t("common.noSiteYet")}</p>
           <Link
-            href="/"
+            href="/audit"
             className="mt-4 inline-flex text-sm font-medium text-[var(--brand-blue)] hover:underline"
           >
             {t("common.goEnterSite")}

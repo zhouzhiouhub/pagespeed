@@ -47,7 +47,6 @@ export function AppNav({ pathname }: { pathname: string }) {
   }, [langOpen]);
 
   const nav = [
-    { href: "/", label: t("nav.dashboard"), withSite: false },
     { href: "/audit", label: t("nav.audit"), withSite: true },
     { href: "/keywords", label: t("nav.keywords"), withSite: true },
     { href: "/content", label: t("nav.content"), withSite: true },
@@ -73,7 +72,11 @@ export function AppNav({ pathname }: { pathname: string }) {
     <header className="border-b border-[var(--border)] bg-[var(--surface)]">
       <div className="mx-auto flex max-w-6xl items-center gap-6 px-4 py-3">
         <Link
-          href="/"
+          href={
+            siteUrl
+              ? `/audit?url=${encodeURIComponent(siteUrl)}`
+              : "/audit"
+          }
           className="flex shrink-0 items-center gap-2.5 tracking-tight text-[var(--fg)]"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -93,9 +96,7 @@ export function AppNav({ pathname }: { pathname: string }) {
                 ? `${item.href}?url=${encodeURIComponent(siteUrl)}`
                 : item.href;
             const active =
-              item.href === "/"
-                ? pathname === "/"
-                : pathname === item.href || pathname.startsWith(`${item.href}/`);
+              pathname === item.href || pathname.startsWith(`${item.href}/`);
             return (
               <Link
                 key={item.href}

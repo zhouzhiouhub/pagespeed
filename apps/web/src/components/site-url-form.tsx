@@ -56,13 +56,13 @@ export function SiteUrlForm({
         onConfirm(result.url);
         return;
       }
-      router.push(`/?url=${encodeURIComponent(result.url)}`);
+      router.push(`/audit?url=${encodeURIComponent(result.url)}`);
     });
   }
 
   return (
     <form
-      action="/"
+      action="/audit"
       method="get"
       onSubmit={onSubmit}
       className="w-full"
