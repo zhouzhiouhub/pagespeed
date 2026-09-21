@@ -125,6 +125,12 @@ if (secrets.NEXTAUTH_SECRET && !secrets.AUTH_SECRET) {
 if (secrets.AUTH_SECRET && !secrets.NEXTAUTH_SECRET) {
   secrets.NEXTAUTH_SECRET = secrets.AUTH_SECRET;
 }
+if (secrets.NEXTAUTH_URL && !secrets.AUTH_URL) {
+  secrets.AUTH_URL = secrets.NEXTAUTH_URL;
+}
+if (secrets.AUTH_URL && !secrets.NEXTAUTH_URL) {
+  secrets.NEXTAUTH_URL = secrets.AUTH_URL;
+}
 
 const keys = Object.keys(secrets).sort();
 console.log(`Prepared ${keys.length} secrets for Worker "pagespeed":`);
