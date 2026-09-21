@@ -1,7 +1,6 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import path from "node:path";
 import { applyProxyDispatcher } from "@/server/http/proxy-bootstrap";
 import { proxiedFetch } from "@/server/http/fetch";
+import { readJsonStore, writeJsonStore } from "@/server/storage/json-store";
 
 export type GoogleTokenBundle = {
   email: string | null;
@@ -18,24 +17,14 @@ type TokenStore = {
 };
 
 const EMPTY: TokenStore = { google: null };
-
-function storePath() {
-  return path.join(process.cwd(), ".data", "google-tokens.json");
-}
+const STORE_KEY = "google-tokens";
 
 async function readStore(): Promise<TokenStore> {
-  try {
-    const raw = await readFile(storePath(), "utf8");
-    return { ...EMPTY, ...(JSON.parse(raw) as Partial<TokenStore>) };
-  } catch {
-    return { ...EMPTY };
-  }
+  return readJsonStore(STORE_KEY, EMPTY);
 }
 
 async function writeStore(next: TokenStore): Promise<void> {
-  const dir = path.dirname(storePath());
-  await mkdir(dir, { recursive: true });
-  await writeFile(storePath(), JSON.stringify(next, null, 2), "utf8");
+  await writeJsonStore(STORE_KEY, next);
 }
 
 export async function saveGoogleTokens(input: {
@@ -45,20 +34,27 @@ export async function saveGoogleTokens(input: {
   expiresAt?: number | null;
   scope?: string | null;
 }): Promise<void> {
-  const store = await readStore();
-  const prev = store.google;
-  const refreshToken = input.refreshToken ?? prev?.refreshToken;
-  if (!refreshToken) return;
+  try {
+    const store = await readStore();
+    const prev = store.google;
+    const refreshToken = input.refreshToken ?? prev?.refreshToken;
+    if (!refreshToken) return;
 
-  store.google = {
-    email: input.email ?? prev?.email ?? null,
-    refreshToken,
-    accessToken: input.accessToken ?? prev?.accessToken ?? null,
-    expiresAt: input.expiresAt ?? prev?.expiresAt ?? null,
-    scope: input.scope ?? prev?.scope ?? null,
-    updatedAt: new Date().toISOString(),
-  };
-  await writeStore(store);
+    store.google = {
+      email: input.email ?? prev?.email ?? null,
+      refreshToken,
+      accessToken: input.accessToken ?? prev?.accessToken ?? null,
+      expiresAt: input.expiresAt ?? prev?.expiresAt ?? null,
+      scope: input.scope ?? prev?.scope ?? null,
+      updatedAt: new Date().toISOString(),
+    };
+    await writeStore(store);
+  } catch (err) {
+    console.warn(
+      "[google-tokens] persist failed",
+      err instanceof Error ? err.message : err,
+    );
+  }
 }
 
 export async function readGoogleTokens(): Promise<GoogleTokenBundle | null> {
@@ -72,9 +68,11 @@ export async function clearGoogleTokens(): Promise<void> {
 
 export async function refreshGoogleAccessToken(refreshToken: string) {
   applyProxyDispatcher();
+  const clientId = process.env.GOOGLE_CLIENT_ID?.trim() || "";
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET?.trim() || "";
   const body = new URLSearchParams({
-    client_id: process.env.GOOGLE_CLIENT_ID ?? "",
-    client_secret: process.env.GOOGLE_CLIENT_SECRET ?? "",
+    client_id: clientId,
+    client_secret: clientSecret,
     grant_type: "refresh_token",
     refresh_token: refreshToken,
   });
@@ -113,10 +111,21 @@ export async function getGoogleAccessToken(opts?: {
   email: string | null;
   error?: string;
 }> {
-  if (opts?.sessionAccessToken) {
+  let sessionAccessToken = opts?.sessionAccessToken ?? null;
+  if (!sessionAccessToken) {
+    try {
+      const { auth } = await import("@/auth");
+      const session = await auth();
+      sessionAccessToken = session?.accessToken ?? null;
+    } catch {
+      // ignore — cron / jwt paths may not have a request session
+    }
+  }
+
+  if (sessionAccessToken) {
     const stored = await readGoogleTokens();
     return {
-      accessToken: opts.sessionAccessToken,
+      accessToken: sessionAccessToken,
       source: "session",
       scope: stored?.scope ?? null,
       email: stored?.email ?? null,
@@ -130,7 +139,6 @@ export async function getGoogleAccessToken(opts?: {
       source: null,
       scope: null,
       email: null,
-      error: "no stored google refresh token",
     };
   }
 

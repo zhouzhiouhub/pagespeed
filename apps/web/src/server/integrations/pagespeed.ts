@@ -1,3 +1,4 @@
+import { getServerEnv } from "@/server/env";
 import {
   proxiedFetch,
   resetHttpDispatcher,
@@ -92,10 +93,10 @@ const SKIP_SCORE_MODES = new Set([
 
 const MAX_ATTEMPTS = 3;
 
-function requireApiKey(): string {
+async function requireApiKey(): Promise<string> {
   const key =
-    process.env.PAGESPEED_API_KEY?.trim() ||
-    process.env.GOOGLE_API_KEY?.trim();
+    (await getServerEnv("PAGESPEED_API_KEY")) ||
+    (await getServerEnv("GOOGLE_API_KEY"));
   if (!key) {
     throw new Error("PAGESPEED_API_KEY or GOOGLE_API_KEY is not configured");
   }
@@ -239,7 +240,7 @@ async function fetchPageSpeedRaw(
   strategy: PsiStrategy,
   locale = "zh-CN",
 ) {
-  const key = requireApiKey();
+  const key = await requireApiKey();
   const endpoint = new URL(
     "https://www.googleapis.com/pagespeedonline/v5/runPagespeed",
   );

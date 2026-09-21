@@ -1,4 +1,5 @@
 import { runPageSpeed } from "@/server/integrations/pagespeed";
+import { getServerEnv } from "@/server/env";
 import { readGa4Store } from "@/server/ga4/store";
 import { translate, type MessageKey } from "@/lib/i18n/messages";
 import type { Locale } from "@/lib/i18n/locale";
@@ -76,8 +77,8 @@ export async function runSeoAgent(
   }
 
   if (
-    process.env.PAGESPEED_API_KEY?.trim() ||
-    process.env.GOOGLE_API_KEY?.trim()
+    (await getServerEnv("PAGESPEED_API_KEY")) ||
+    (await getServerEnv("GOOGLE_API_KEY"))
   ) {
     try {
       const psi = await runPageSpeed(siteUrl, "mobile");

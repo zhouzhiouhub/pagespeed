@@ -1,5 +1,4 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import path from "node:path";
+import { readJsonStore, writeJsonStore } from "@/server/storage/json-store";
 
 export type SiteRecord = {
   id: string;
@@ -43,23 +42,14 @@ const EMPTY: FileDb = {
   latestAuditBySite: {},
 };
 
-function storePath() {
-  return path.join(process.cwd(), ".data", "sites-store.json");
-}
+const STORE_KEY = "sites-store";
 
 async function readDb(): Promise<FileDb> {
-  try {
-    const raw = await readFile(storePath(), "utf8");
-    return { ...EMPTY, ...(JSON.parse(raw) as Partial<FileDb>) };
-  } catch {
-    return { ...EMPTY };
-  }
+  return readJsonStore(STORE_KEY, EMPTY);
 }
 
 async function writeDb(next: FileDb): Promise<void> {
-  const dir = path.dirname(storePath());
-  await mkdir(dir, { recursive: true });
-  await writeFile(storePath(), JSON.stringify(next, null, 2), "utf8");
+  await writeJsonStore(STORE_KEY, next);
 }
 
 export function siteKeyFromUrl(url: string): string {

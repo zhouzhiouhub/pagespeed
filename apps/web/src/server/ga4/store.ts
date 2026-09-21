@@ -1,5 +1,4 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import path from "node:path";
+import { readJsonStore, writeJsonStore } from "@/server/storage/json-store";
 
 export type Ga4Property = {
   name: string; // properties/123
@@ -39,21 +38,12 @@ const EMPTY: Ga4Store = {
   topPages: [],
 };
 
-function storePath() {
-  return path.join(process.cwd(), ".data", "ga4-store.json");
-}
+const STORE_KEY = "ga4-store";
 
 export async function readGa4Store(): Promise<Ga4Store> {
-  try {
-    const raw = await readFile(storePath(), "utf8");
-    return { ...EMPTY, ...(JSON.parse(raw) as Partial<Ga4Store>) };
-  } catch {
-    return { ...EMPTY };
-  }
+  return readJsonStore(STORE_KEY, EMPTY);
 }
 
 export async function writeGa4Store(next: Ga4Store): Promise<void> {
-  const dir = path.dirname(storePath());
-  await mkdir(dir, { recursive: true });
-  await writeFile(storePath(), JSON.stringify(next, null, 2), "utf8");
+  await writeJsonStore(STORE_KEY, next);
 }

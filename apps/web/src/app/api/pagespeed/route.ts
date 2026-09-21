@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { localizedUrlError, localeFromRequest, parseSiteUrl } from "@/lib/url";
+import { getServerEnv } from "@/server/env";
 import { runPageSpeed, type PsiStrategy } from "@/server/integrations/pagespeed";
 
 export const runtime = "nodejs";
@@ -34,8 +35,8 @@ export async function GET(request: Request) {
   }
 
   if (
-    !process.env.PAGESPEED_API_KEY?.trim() &&
-    !process.env.GOOGLE_API_KEY?.trim()
+    !(await getServerEnv("PAGESPEED_API_KEY")) &&
+    !(await getServerEnv("GOOGLE_API_KEY"))
   ) {
     return NextResponse.json(
       {

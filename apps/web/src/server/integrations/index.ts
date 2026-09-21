@@ -1,8 +1,9 @@
 /**
  * External integrations: PageSpeed / GSC / GA4 / GitHub.
  */
-import { readGscStore } from "@/server/gsc/store";
+import { getServerEnv } from "@/server/env";
 import { getGa4Status } from "@/server/integrations/ga4";
+import { readGscStore } from "@/server/gsc/store";
 
 export type IntegrationProvider =
   | "pagespeed"
@@ -16,11 +17,11 @@ export async function getIntegrationStatus(
   provider: IntegrationProvider,
 ): Promise<{ connected: boolean; provider: IntegrationProvider; note?: string }> {
   if (provider === "pagespeed") {
+    const key =
+      (await getServerEnv("PAGESPEED_API_KEY")) ||
+      (await getServerEnv("GOOGLE_API_KEY"));
     return {
-      connected: Boolean(
-        process.env.PAGESPEED_API_KEY?.trim() ||
-          process.env.GOOGLE_API_KEY?.trim(),
-      ),
+      connected: Boolean(key),
       provider,
     };
   }

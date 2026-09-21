@@ -1,5 +1,4 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import path from "node:path";
+import { readJsonStore, writeJsonStore } from "@/server/storage/json-store";
 import type { KeywordOpportunity } from "@/server/keywords/opportunities";
 
 export type GscSite = {
@@ -31,21 +30,12 @@ const EMPTY: GscStore = {
   opportunities: [],
 };
 
-function storePath() {
-  return path.join(process.cwd(), ".data", "gsc-store.json");
-}
+const STORE_KEY = "gsc-store";
 
 export async function readGscStore(): Promise<GscStore> {
-  try {
-    const raw = await readFile(storePath(), "utf8");
-    return { ...EMPTY, ...(JSON.parse(raw) as Partial<GscStore>) };
-  } catch {
-    return { ...EMPTY };
-  }
+  return readJsonStore(STORE_KEY, EMPTY);
 }
 
 export async function writeGscStore(next: GscStore): Promise<void> {
-  const dir = path.dirname(storePath());
-  await mkdir(dir, { recursive: true });
-  await writeFile(storePath(), JSON.stringify(next, null, 2), "utf8");
+  await writeJsonStore(STORE_KEY, next);
 }
