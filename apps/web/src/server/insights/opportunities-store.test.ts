@@ -22,21 +22,17 @@ describe("traffic-impact", () => {
     ).toBe("unknown");
   });
 
-  it("builds index from GA4 + GSC", () => {
+  it("builds index from GA4", () => {
     const index = buildPageTrafficIndex({
       ga4: {
         lastSyncedAt: "2026-01-01",
         rows: [{ pagePath: "/blog", sessions: 12 }],
       },
-      gsc: {
-        lastSyncedAt: "2026-01-01",
-        rows: [{ page: "https://example.com/blog", impressions: 100 }],
-      },
     });
     expect(index.hasData).toBe(true);
     expect(index.byPath.get("/blog")).toEqual({
       sessions: 12,
-      impressions: 100,
+      impressions: 0,
     });
   });
 });
@@ -89,7 +85,6 @@ describe("draftsFromCrawl", () => {
         lastSyncedAt: "2026-01-01",
         rows: [{ pagePath: "/hot", sessions: 40 }],
       },
-      gsc: null,
     });
     const drafts = draftsFromCrawl(crawl, traffic);
     const urls = drafts.map((d) => d.pageUrl);

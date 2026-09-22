@@ -8,7 +8,6 @@ import {
 
 applyProxyDispatcher();
 
-const GSC_SCOPE = "https://www.googleapis.com/auth/webmasters.readonly";
 const GA4_SCOPE = "https://www.googleapis.com/auth/analytics.readonly";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
@@ -20,7 +19,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
       authorization: {
         params: {
-          scope: `openid email profile ${GSC_SCOPE} ${GA4_SCOPE}`,
+          scope: `openid email profile ${GA4_SCOPE}`,
           access_type: "offline",
           prompt: "consent",
           include_granted_scopes: "true",
@@ -81,7 +80,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         typeof token.accessToken === "string" ? token.accessToken : undefined;
       session.error = typeof token.error === "string" ? token.error : undefined;
       const scope = typeof token.scope === "string" ? token.scope : "";
-      session.hasGscScope = /webmasters|searchconsole/i.test(scope);
       session.hasGa4Scope = /analytics/i.test(scope);
       return session;
     },
@@ -92,7 +90,6 @@ declare module "next-auth" {
   interface Session {
     accessToken?: string;
     error?: string;
-    hasGscScope?: boolean;
     hasGa4Scope?: boolean;
   }
 }

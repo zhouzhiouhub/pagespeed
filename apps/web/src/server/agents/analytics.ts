@@ -27,14 +27,12 @@ const schema = z.object({
 
 function heuristic(tools: AgentToolResult[]): AnalyticsNarrative {
   const ga = tools.find((t) => t.tool === "read_ga");
-  const gsc = tools.find((t) => t.tool === "read_gsc");
   const audit = tools.find((t) => t.tool === "read_audit");
+  const opps = tools.find((t) => t.tool === "read_opportunities");
 
   const sessions = Number(ga?.data.sessions7d ?? 0);
   const users = Number(ga?.data.users7d ?? 0);
-  const oppCount = Array.isArray(gsc?.data.topOpportunities)
-    ? gsc!.data.topOpportunities.length
-    : 0;
+  const oppCount = Array.isArray(opps?.data.items) ? opps!.data.items.length : 0;
   const seo = (audit?.data.scores as Record<string, number> | undefined)?.seo;
   const geo = (audit?.data.scores as Record<string, number> | undefined)?.geo;
 
@@ -44,9 +42,9 @@ function heuristic(tools: AgentToolResult[]): AnalyticsNarrative {
     const top = (ga.data.topPages as Array<{ path: string; sessions: number }>)?.[0];
     if (top) bullets.push(`流量最高页：${top.path}（${top.sessions} sessions）`);
   } else {
-    bullets.push("GA4 尚未同步，暂用审计与 GSC 信号");
+    bullets.push("GA4 尚未同步，暂用审计与关键词机会信号");
   }
-  if (gsc?.ok) bullets.push(`GSC 关键词机会 ${oppCount} 条`);
+  if (opps?.ok) bullets.push(`已落库增长机会 ${oppCount} 条`);
   if (audit?.ok) {
     bullets.push(
       `最近审计 SEO ${seo ?? "—"} / GEO ${geo ?? "—"}，issues ${audit.data.issueCount ?? 0}`,
@@ -56,19 +54,18 @@ function heuristic(tools: AgentToolResult[]): AnalyticsNarrative {
   return {
     headline:
       sessions > 0
-        ? `近 7 天有 ${sessions} 次会话，优先守住高流量页并推进 GSC 抢位`
-        : "先接通 GA4/GSC，再用审计机会驱动本周动作",
+        ? `近 7 天有 ${sessions} 次会话，优先守住高流量页并推进关键词机会`
+        : "先接通 GA4，再用审计机会驱动本周动作",
     summary:
-      "综合 GA / GSC / 审计结果，给出本周增长叙事。未连接的数据源已降级说明。",
+      "综合 GA / 审计 / 机会结果，给出本周增长叙事。未连接的数据源已降级说明。",
     bullets,
     risks: [
       ...(ga?.ok ? [] : ["缺少 GA4，无法判断流量与互动质量"]),
-      ...(gsc?.ok ? [] : ["缺少 GSC，关键词抢位证据不足"]),
     ],
     nextActions: [
       ga?.ok ? "检查 top pages 的 GEO readiness 与内链" : "连接并同步 GA4",
-      gsc?.ok ? "处理 Top GSC 机会的 Title/FAQ" : "连接并同步 GSC",
-      "在 Dashboard 运行多页爬取刷新 SEO/GEO 分",
+      oppCount > 0 ? "处理 Top 关键词机会的 Title/FAQ" : "刷新关键词机会",
+      "在网站分析页运行多页爬取刷新 SEO/GEO 分",
     ],
     source: "heuristic",
     model: null,
@@ -82,7 +79,6 @@ export async function runAnalyticsAgent(
 ): Promise<AnalyticsNarrative> {
   const tools = await runAgentTools(siteUrl, [
     "read_ga",
-    "read_gsc",
     "read_audit",
     "read_opportunities",
   ]);

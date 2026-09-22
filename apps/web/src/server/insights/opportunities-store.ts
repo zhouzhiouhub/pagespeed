@@ -9,7 +9,6 @@ import { ensureSite } from "@/server/sites/repo";
 import { readJsonStore, writeJsonStore } from "@/server/storage/json-store";
 import type { CrawlResult } from "@/server/crawler";
 import type { KeywordOpportunity } from "@/server/keywords/opportunities";
-import type { GscStore } from "@/server/gsc/store";
 import {
   classifyTrafficBand,
   lookupPageTraffic,
@@ -71,32 +70,6 @@ async function writeFileStore(next: FileOppStore) {
   await writeJsonStore(STORE_KEY, next);
 }
 
-export function draftsFromGsc(store: GscStore): OpportunityDraft[] {
-  return store.opportunities.map((op) => ({
-    type: "keyword" as const,
-    title: `关键词「${op.query}」可抢位`,
-    description: op.rationale,
-    query: op.query,
-    pageUrl: op.page,
-    score: op.potential,
-    impact: op.potential,
-    confidence: 0.7,
-    effort: 3,
-    payload: { ...op },
-    evidence: [
-      {
-        kind: "gsc_row" as const,
-        ref: {
-          query: op.query,
-          page: op.page,
-          position: op.position,
-          source: "gsc",
-        },
-      },
-    ],
-  }));
-}
-
 export function draftsFromKeywordOps(
   items: KeywordOpportunity[],
 ): OpportunityDraft[] {
@@ -108,12 +81,12 @@ export function draftsFromKeywordOps(
     pageUrl: op.page,
     score: op.potential,
     impact: op.potential,
-    confidence: op.source === "gsc" ? 0.75 : 0.45,
+    confidence: 0.45,
     effort: 3,
     payload: { ...op },
     evidence: [
       {
-        kind: op.source === "gsc" ? ("gsc_row" as const) : ("rule" as const),
+        kind: "rule" as const,
         ref: { query: op.query, page: op.page, source: op.source },
       },
     ],

@@ -1,7 +1,6 @@
 import { z } from "zod";
 import type { PageSignals } from "@/server/keywords/extract";
 import { generateText, safeParseJsonArray } from "@/server/llm/gemini";
-import { readGscStore } from "@/server/gsc/store";
 import {
   DEFAULT_LOCALE,
   llmLanguageRule,
@@ -18,7 +17,7 @@ export type ContentGap = {
   intent: string | null;
   rationale: string;
   geoHint: string | null;
-  source: "gsc" | "ai" | "heuristic";
+  source: "ai" | "heuristic";
 };
 
 const llmGapSchema = z.object({
@@ -207,76 +206,12 @@ export async function buildContentGaps(
   locale: Locale = DEFAULT_LOCALE,
 ): Promise<{
   items: ContentGap[];
-  source: "gsc" | "ai" | "heuristic";
+  source: "ai" | "heuristic";
   model: string | null;
   warning: string | null;
 }> {
   const t = (key: Parameters<typeof translate>[1], params?: Record<string, string | number>) =>
     translate(locale, key, params);
-
-  const store = await readGscStore();
-  const sameSite =
-    store.siteUrl &&
-    (store.siteUrl === siteUrl ||
-      siteUrl.startsWith(store.siteUrl) ||
-      store.siteUrl.includes(new URL(siteUrl).hostname));
-
-  if (sameSite && store.rows.length > 0) {
-    const fromGsc: ContentGap[] = store.rows
-      .filter((r) => {
-        const path = (() => {
-          try {
-            return new URL(r.page).pathname || "/";
-          } catch {
-            return r.page.startsWith("/") ? r.page : "/";
-          }
-        })();
-        const thinLanding =
-          path === "/" ||
-          path === "/index" ||
-          path === "/home" ||
-          path.split("/").filter(Boolean).length <= 1;
-        return r.impressions >= 20 && thinLanding;
-      })
-      .sort((a, b) => b.impressions - a.impressions)
-      .slice(0, 12)
-      .map((r) => {
-        const path = `/blog/${slugify(r.query)}`;
-        return {
-          id: makeId(r.query, path),
-          title: t("server.content.gscTitle", { query: r.query }),
-          targetKeyword: r.query,
-          potential:
-            r.impressions >= 200
-              ? 5
-              : r.impressions >= 80
-                ? 4
-                : r.impressions >= 40
-                  ? 3
-                  : 2,
-          suggestedPath: path,
-          intent: /如何|什么|怎么|how|what|vs|对比/i.test(r.query)
-            ? "informational"
-            : "commercial",
-          rationale: t("server.content.gscRationale", {
-            query: r.query,
-            impressions: r.impressions,
-            clicks: r.clicks,
-          }),
-          geoHint: t("server.content.gscGeo"),
-          source: "gsc" as const,
-        };
-      });
-
-    if (fromGsc.length > 0) {
-      return {
-        items: fromGsc,
-        source: "gsc",
-        model: null,
-        warning: null,
-      };
-    }
-  }
 
   const hasLlm = Boolean(process.env.LLM_API_KEY?.trim());
   if (hasLlm) {

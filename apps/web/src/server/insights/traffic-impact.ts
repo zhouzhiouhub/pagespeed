@@ -1,5 +1,5 @@
 /**
- * Map GA4 sessions / GSC impressions onto crawled pages so tech issues
+ * Map GA4 sessions onto crawled pages so tech issues
  * on zero-traffic URLs can be demoted (M3: 无流量低优).
  */
 
@@ -37,10 +37,6 @@ export function buildPageTrafficIndex(input: {
     lastSyncedAt: string | null;
     rows: Array<{ pagePath: string; sessions: number }>;
   } | null;
-  gsc?: {
-    lastSyncedAt: string | null;
-    rows: Array<{ page: string; impressions: number }>;
-  } | null;
 }): PageTrafficIndex {
   const byPath = new Map<string, PageTrafficStats>();
   let hasData = false;
@@ -51,16 +47,6 @@ export function buildPageTrafficIndex(input: {
       const key = normalizePathKey(row.pagePath);
       const prev = byPath.get(key) ?? { sessions: 0, impressions: 0 };
       prev.sessions += row.sessions || 0;
-      byPath.set(key, prev);
-    }
-  }
-
-  if (input.gsc?.lastSyncedAt && input.gsc.rows.length > 0) {
-    hasData = true;
-    for (const row of input.gsc.rows) {
-      const key = normalizePathKey(row.page);
-      const prev = byPath.get(key) ?? { sessions: 0, impressions: 0 };
-      prev.impressions += row.impressions || 0;
       byPath.set(key, prev);
     }
   }

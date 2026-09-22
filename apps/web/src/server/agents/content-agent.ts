@@ -19,7 +19,7 @@ function t(
 }
 
 /**
- * Content Agent — content gap opportunities from page themes / GSC.
+ * Content Agent — content gap opportunities from page themes.
  */
 export async function runContentAgent(
   ctx: LightAgentContext,

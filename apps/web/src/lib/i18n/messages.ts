@@ -45,16 +45,14 @@ export const messages = {
     },
     onboarding: {
       kicker: "接入向导",
-      title: "5 步开始增长",
+      title: "4 步开始增长",
       subtitle:
         "先接好站点与数据源，再跑第一次扫描——像雇佣一位增长员工，而不是下载一份报告。",
       stepUrl: "网站",
-      stepGsc: "Search Console",
       stepGa4: "Analytics",
       stepScan: "扫描",
       stepDone: "完成",
-      urlHint: "建议使用你自己的站点（如生产域名），以便 GSC/GA4 能匹配。",
-      gscHint: "连接后可看到真实查询与 CTR 机会；也可跳过，系统会用页面启发式。",
+      urlHint: "建议使用你自己的站点（如生产域名），以便 GA4 能匹配。",
       ga4Hint: "连接后可按流量给技术问题降权；也可跳过。",
       scanHint: "将爬取站点抽样页面，并生成今日增长建议（可能需要一两分钟）。",
       startScan: "开始扫描",
@@ -68,7 +66,7 @@ export const messages = {
       doneBody: "接入完成。接下来每天打开「增长建议」即可。",
       doneBulletAudit: "网站分析页可查看分数与问题",
       doneBulletAdvice: "增长建议页有带证据的行动卡",
-      doneBulletIntegrations: "未连接的 GSC 可随时在关键词页补上",
+      doneBulletIntegrations: "未连接的 GA4 可随时在接入向导中补上",
       goDashboard: "进入网站分析",
       backDashboard: "返回网站分析",
     },
@@ -95,7 +93,6 @@ export const messages = {
       opportunitiesCount: "{count} 机会",
       dbAvailable: "可用",
       dbFallback: "降级文件存储",
-      manageGsc: "管理 GSC →",
       analyticsRunning: "生成叙事中…",
       analyticsRun: "运行 Analytics Agent",
       analyticsFailed: "Analytics Agent 失败",
@@ -140,9 +137,9 @@ export const messages = {
     keywords: {
       title: "关键词机会",
       description:
-        "值得抢的词，而不是词库浏览器。V1 可先用页面/AI 推断；接入 GSC 后替换为真实排名与 CTR。",
-      sourceAi: "AI 推断（待 GSC 校验）",
-      sourceHeuristic: "页面启发式（待 GSC）",
+        "值得抢的词，而不是词库浏览器。根据页面内容由 AI 或启发式推断关键词机会。",
+      sourceAi: "AI 推断",
+      sourceHeuristic: "页面启发式",
       colKeyword: "关键词",
       colRank: "当前排名",
       colTrend: "趋势",
@@ -150,7 +147,7 @@ export const messages = {
       colPotential: "潜力",
       colAction: "操作",
       viewPlan: "查看方案",
-      awaitingGsc: "待 GSC 数据校准",
+      rankEstimate: "启发式估计",
       planFailed: "生成方案失败",
       detailTitle: "机会详情",
       estimatedLift: "预计提升",
@@ -180,8 +177,8 @@ export const messages = {
       title: "内容机会",
       description:
         "该写什么、先写哪篇。V1 输出内容缺口与 Brief（首段答案 / 大纲 / FAQ），不自动发布全文。",
-      sourceAi: "AI 推断（待 GSC 校验）",
-      sourceHeuristic: "页面启发式（待 GSC）",
+      sourceAi: "AI 推断",
+      sourceHeuristic: "页面启发式",
       colGap: "缺口标题",
       colTarget: "目标词",
       colPath: "建议路径",
@@ -209,7 +206,7 @@ export const messages = {
       refreshGaps: "刷新内容缺口",
       viewKeywords: "查看关键词机会",
       loading: "正在抓取页面并识别内容缺口…",
-      empty: "未识别到内容缺口。可尝试刷新，或先在关键词页同步 GSC。",
+      empty: "未识别到内容缺口。可尝试刷新或检查站点是否可访问。",
     },
     geo: {
       title: "GEO",
@@ -289,22 +286,6 @@ export const messages = {
       noOpen:
         "当前没有 open 状态的建议。可点「显示全部状态」或重新生成。",
     },
-    gsc: {
-      loadSitesFailed: "无法读取 GSC 站点列表",
-      selectProperty: "请选择 Search Console 资源",
-      syncFailed: "同步失败",
-      synced: "已同步，识别到 {count} 个关键词机会",
-      networkSyncFailed: "网络错误，同步失败",
-      signedIn: "已登录{email}",
-      connectHint: "连接后拉取真实查询、排名与 CTR，替换启发式结果",
-      property: "资源：{property}",
-      syncedAt: " · 同步于 {time}",
-      connect: "连接 GSC",
-      loadingSites: "加载站点中…",
-      syncing: "同步中…",
-      syncKeywords: "同步关键词",
-      sessionExpired: "登录态已过期，请重新连接 GSC。",
-    },
     ga4: {
       selectProperty: "请选择 GA4 property",
       syncFailed: "GA4 同步失败",
@@ -335,16 +316,6 @@ export const messages = {
         synced: "GA4 已同步近 7 天页级数据",
         authorized: "已授权 Analytics，请在 Dashboard 选择 property 并同步",
         connect: "连接 Google（含 Analytics 只读）后可同步 GA4",
-      },
-      gscOpp: {
-        rationaleWin:
-          "GSC 近 28 天：展示 {impressions}，点击 {clicks}，均位 {position}，CTR {ctr}%。处于 8–20 抢位区间，优先优化落地页。",
-        rationaleWatch:
-          "GSC 近 28 天：展示 {impressions}，点击 {clicks}，均位 {position}，CTR {ctr}%。有展现基础，可继续观察或小幅优化。",
-        actionTitle: "优化 Title/H1",
-        actionFaq: "补充 FAQ / 定义段",
-        actionLinks: "加强相关内链",
-        actionIntent: "核对搜索意图",
       },
       advice: {
         greeting: "今日增长建议",
@@ -383,19 +354,19 @@ export const messages = {
         seedDownload: "{brand} 下载",
         seedAlt: "{brand} 替代",
         rationale:
-          "从页面 Title/H1/H2 提取的候选词（站点：{host}）。未连接 GSC，排名与趋势为启发式占位，仅用于机会排期；接入 Search Console 后会替换为真实查询数据。",
+          "从页面 Title/H1/H2 提取的候选词（站点：{host}）。排名与趋势为启发式估计，仅用于机会排期。",
         actionTitle: "优化 Title/H1",
         actionFaq: "补充 FAQ / 定义段",
         actionLinks: "加强相关内链",
         actionIntent: "检查搜索意图覆盖",
         warnAiEstimate:
-          "尚未连接 Google Search Console，排名/趋势为 AI 估计，接入 GSC 后替换为真实查询数据。",
+          "排名/趋势为 AI 估计，用于机会排期，并非真实搜索排名。",
         warnLocation:
-          "Gemini 当前出口地区不可用（User location is not supported）。请让 Clash 使用美/日/新等可用节点，并确认系统代理/TUN 已开启；或改用可用的 LLM_BASE_URL 中转。已降级为页面启发式。连接 GSC 后可显示真实排名机会。",
+          "Gemini 当前出口地区不可用（User location is not supported）。请让 Clash 使用美/日/新等可用节点，并确认系统代理/TUN 已开启；或改用可用的 LLM_BASE_URL 中转。已降级为页面启发式。",
         warnAiFail:
-          "AI 生成失败（{message}），已降级为页面启发式候选。连接 GSC 后可显示真实排名机会。",
+          "AI 生成失败（{message}），已降级为页面启发式候选。",
         warnNoLlm:
-          "未配置 LLM_API_KEY，且尚未连接 GSC。当前为页面标题/标题层级启发式候选。",
+          "未配置 LLM_API_KEY。当前为页面标题/标题层级启发式候选。",
       },
       content: {
         guideTitle: "{brand} 使用指南 / Getting Started",
@@ -418,17 +389,13 @@ export const messages = {
           "从首页 H2/导航提取主题「{topic}」，未见独立内容页覆盖。建议写成答案型专页。",
         topicGeoQuestion: "问题型：首段直接答 + FAQ 3+",
         topicGeoTheme: "主题型：定义 + 场景 + 步骤",
-        gscTitle: "为「{query}」创建专页",
-        gscRationale:
-          "GSC：查询「{query}」展示 {impressions}、点击 {clicks}，但落地偏首页/浅路径。适合拆成独立内容页承接意图。",
-        gscGeo: "专页首段直接回答查询意图 + FAQ",
         warnAi:
-          "尚未用 GSC 校验内容缺口。当前为 AI 基于首页主题推断；接入并同步 GSC 后，会优先展示「有展现、无专页」的真实缺口。",
+          "当前为 AI 基于首页主题推断的内容缺口。",
         warnLocation:
           "Gemini 地区不可用，已用规则模板生成内容缺口。可切换海外代理后重试。",
         warnAiFail: "AI 生成失败（{message}），已降级为启发式内容缺口。",
         warnNoLlm:
-          "未配置 LLM_API_KEY。当前为首页标题层级/导航启发式内容缺口；配置 LLM 或连接 GSC 后更准。",
+          "未配置 LLM_API_KEY。当前为首页标题层级/导航启发式内容缺口；配置 LLM 后更准。",
       },
     },
   },
@@ -476,17 +443,14 @@ export const messages = {
     },
     onboarding: {
       kicker: "Onboarding",
-      title: "Get started in 5 steps",
+      title: "Get started in 4 steps",
       subtitle:
         "Connect your site and data sources, then run the first scan — like hiring a growth teammate, not downloading a report.",
       stepUrl: "Site",
-      stepGsc: "Search Console",
       stepGa4: "Analytics",
       stepScan: "Scan",
       stepDone: "Done",
-      urlHint: "Prefer your own production domain so GSC/GA4 can match properties.",
-      gscHint:
-        "Connect for real query/CTR opportunities, or skip and use page heuristics.",
+      urlHint: "Prefer your own production domain so GA4 can match properties.",
       ga4Hint:
         "Connect so tech issues on zero-traffic pages get demoted — or skip for now.",
       scanHint:
@@ -502,7 +466,7 @@ export const messages = {
       doneBody: "You’re set. Open Growth Advice each day for next actions.",
       doneBulletAudit: "Site Audit shows scores and issues",
       doneBulletAdvice: "Advice cards come with evidence",
-      doneBulletIntegrations: "You can connect GSC anytime from Keywords",
+      doneBulletIntegrations: "You can connect GA4 anytime from onboarding",
       goDashboard: "Go to Site Audit",
       backDashboard: "Back to Site Audit",
     },
@@ -529,7 +493,6 @@ export const messages = {
       opportunitiesCount: "{count} opportunities",
       dbAvailable: "Available",
       dbFallback: "File storage fallback",
-      manageGsc: "Manage GSC →",
       analyticsRunning: "Generating narrative…",
       analyticsRun: "Run Analytics Agent",
       analyticsFailed: "Analytics Agent failed",
@@ -574,9 +537,9 @@ export const messages = {
     keywords: {
       title: "Keyword opportunities",
       description:
-        "Words worth winning — not a keyword browser. V1 can start from page/AI heuristics; connect GSC for real rankings and CTR.",
-      sourceAi: "AI inferred (pending GSC)",
-      sourceHeuristic: "Page heuristics (pending GSC)",
+        "Words worth winning — not a keyword browser. Opportunities are inferred from page content with AI or heuristics.",
+      sourceAi: "AI inferred",
+      sourceHeuristic: "Page heuristics",
       colKeyword: "Keyword",
       colRank: "Current rank",
       colTrend: "Trend",
@@ -584,7 +547,7 @@ export const messages = {
       colPotential: "Potential",
       colAction: "Action",
       viewPlan: "View plan",
-      awaitingGsc: "Awaiting GSC calibration",
+      rankEstimate: "Heuristic estimate",
       planFailed: "Failed to generate plan",
       detailTitle: "Opportunity details",
       estimatedLift: "Estimated lift",
@@ -615,8 +578,8 @@ export const messages = {
       title: "Content opportunities",
       description:
         "What to write and what to write first. V1 outputs content gaps and briefs (answer / outline / FAQ) — not full auto-publishing.",
-      sourceAi: "AI inferred (pending GSC)",
-      sourceHeuristic: "Page heuristics (pending GSC)",
+      sourceAi: "AI inferred",
+      sourceHeuristic: "Page heuristics",
       colGap: "Gap title",
       colTarget: "Target keyword",
       colPath: "Suggested path",
@@ -645,7 +608,7 @@ export const messages = {
       viewKeywords: "View keyword opportunities",
       loading: "Crawling pages and finding content gaps…",
       empty:
-        "No content gaps found. Try refreshing, or sync GSC on the Keywords page first.",
+        "No content gaps found. Try refreshing or check if the site is reachable.",
     },
     geo: {
       title: "GEO",
@@ -725,23 +688,6 @@ export const messages = {
       noOpen:
         "No open advice items. Show all statuses or regenerate.",
     },
-    gsc: {
-      loadSitesFailed: "Could not load GSC site list",
-      selectProperty: "Please select a Search Console property",
-      syncFailed: "Sync failed",
-      synced: "Synced — found {count} keyword opportunities",
-      networkSyncFailed: "Network error during sync",
-      signedIn: "Signed in{email}",
-      connectHint:
-        "Connect to pull real queries, rankings, and CTR — replacing heuristics",
-      property: "Property: {property}",
-      syncedAt: " · Synced {time}",
-      connect: "Connect GSC",
-      loadingSites: "Loading sites…",
-      syncing: "Syncing…",
-      syncKeywords: "Sync keywords",
-      sessionExpired: "Session expired. Please reconnect GSC.",
-    },
     ga4: {
       selectProperty: "Please select a GA4 property",
       syncFailed: "GA4 sync failed",
@@ -774,16 +720,6 @@ export const messages = {
           "Analytics authorized — select a property on the Dashboard and sync",
         connect:
           "Connect Google (Analytics read-only) to sync GA4",
-      },
-      gscOpp: {
-        rationaleWin:
-          "GSC last 28 days: {impressions} impressions, {clicks} clicks, avg position {position}, CTR {ctr}%. In the 8–20 win zone — prioritize the landing page.",
-        rationaleWatch:
-          "GSC last 28 days: {impressions} impressions, {clicks} clicks, avg position {position}, CTR {ctr}%. Solid visibility — keep watching or make light optimizations.",
-        actionTitle: "Optimize Title/H1",
-        actionFaq: "Add FAQ / definition block",
-        actionLinks: "Strengthen related internal links",
-        actionIntent: "Check search-intent coverage",
       },
       advice: {
         greeting: "Today’s growth advice",
@@ -822,19 +758,19 @@ export const messages = {
         seedDownload: "{brand} download",
         seedAlt: "{brand} alternatives",
         rationale:
-          "Candidates extracted from Title/H1/H2 (site: {host}). GSC is not connected — rank/trend are heuristic placeholders for prioritization; Search Console will replace them with real queries.",
+          "Candidates extracted from Title/H1/H2 (site: {host}). Rank/trend are heuristic estimates for prioritization.",
         actionTitle: "Optimize Title/H1",
         actionFaq: "Add FAQ / definition block",
         actionLinks: "Strengthen related internal links",
         actionIntent: "Check search-intent coverage",
         warnAiEstimate:
-          "Google Search Console is not connected — ranks/trends are AI estimates. Connect GSC to replace them with real query data.",
+          "Ranks/trends are AI estimates for prioritization, not live search rankings.",
         warnLocation:
-          "Gemini is unavailable for the current exit region (User location is not supported). Switch Clash to a US/JP/SG node with system proxy/TUN on, or use a working LLM_BASE_URL relay. Fell back to page heuristics. Connect GSC for real ranking opportunities.",
+          "Gemini is unavailable for the current exit region (User location is not supported). Switch Clash to a US/JP/SG node with system proxy/TUN on, or use a working LLM_BASE_URL relay. Fell back to page heuristics.",
         warnAiFail:
-          "AI generation failed ({message}); fell back to page heuristics. Connect GSC for real ranking opportunities.",
+          "AI generation failed ({message}); fell back to page heuristics.",
         warnNoLlm:
-          "LLM_API_KEY is not set and GSC is not connected. Showing Title/heading heuristics.",
+          "LLM_API_KEY is not set. Showing Title/heading heuristics.",
       },
       content: {
         guideTitle: "{brand} getting started guide",
@@ -857,18 +793,14 @@ export const messages = {
           "Topic “{topic}” appears in homepage H2/nav but has no dedicated content page. Write an answer-style page.",
         topicGeoQuestion: "Question-style: answer first + FAQ 3+",
         topicGeoTheme: "Theme-style: definition + scenarios + steps",
-        gscTitle: "Create a dedicated page for “{query}”",
-        gscRationale:
-          "GSC: query “{query}” has {impressions} impressions and {clicks} clicks but lands on a thin/home path. Split into a dedicated content page.",
-        gscGeo: "Answer the query intent in the first paragraph + FAQ",
         warnAi:
-          "Content gaps are AI-inferred from homepage themes and not yet validated with GSC. After syncing GSC, we’ll prioritize real “impressions without a dedicated page” gaps.",
+          "Content gaps are AI-inferred from homepage themes.",
         warnLocation:
           "Gemini is unavailable in this region; used rule templates for content gaps. Switch to an overseas proxy and retry.",
         warnAiFail:
           "AI generation failed ({message}); fell back to heuristic content gaps.",
         warnNoLlm:
-          "LLM_API_KEY is not set. Showing homepage heading/nav heuristic gaps; configure LLM or connect GSC for better accuracy.",
+          "LLM_API_KEY is not set. Showing homepage heading/nav heuristic gaps; configure LLM for better accuracy.",
       },
     },
   },

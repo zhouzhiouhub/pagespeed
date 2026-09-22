@@ -1,17 +1,11 @@
 import { composeDailyAdvice } from "@/server/agents/advice";
 import { enqueueCrawl } from "@/server/crawler";
-import { syncGscProperty } from "@/server/gsc/client";
-import { readGscStore, writeGscStore } from "@/server/gsc/store";
 import { runGa4PageReport } from "@/server/ga4/client";
 import { readGa4Store, writeGa4Store } from "@/server/ga4/store";
 import { getGoogleAccessToken } from "@/server/google/tokens";
-import {
-  persistGa4DailyRows,
-  persistGscDailyRows,
-} from "@/server/insights/metrics-persist";
+import { persistGa4DailyRows } from "@/server/insights/metrics-persist";
 import {
   draftsFromCrawl,
-  draftsFromGsc,
   draftsFromKeywordOps,
   persistOpportunities,
 } from "@/server/insights/opportunities-store";
@@ -25,7 +19,6 @@ import { siteKeyFromUrl } from "@/server/sites/file-store";
 export const JOB_NAMES = [
   "crawl.full",
   "crawl.delta",
-  "sync.gsc",
   "sync.ga4",
   "insights.opportunities",
   "advice.daily",
@@ -62,8 +55,8 @@ async function runCrawlFull(payload: Record<string, unknown>): Promise<JobResult
   });
   const persisted = await persistCrawlResult(site, result);
 
-  const [ga4, gsc] = await Promise.all([readGa4Store(), readGscStore()]);
-  const traffic = buildPageTrafficIndex({ ga4, gsc });
+  const ga4 = await readGa4Store();
+  const traffic = buildPageTrafficIndex({ ga4 });
   const opp = await persistOpportunities(
     seedUrl,
     draftsFromCrawl(result, traffic),
@@ -110,80 +103,6 @@ async function runAdviceDaily(
       itemCount: run.items.length,
       headline: run.headline,
       sources: run.sources,
-    },
-  };
-}
-
-async function runSyncGsc(payload: Record<string, unknown>): Promise<JobResult> {
-  const store = await readGscStore();
-  const property =
-    (typeof payload.property === "string" && payload.property) ||
-    store.selectedProperty;
-  if (!property) {
-    return {
-      accepted: true,
-      name: "sync.gsc",
-      ok: false,
-      detail: {
-        hint: "Connect GSC via UI first and select a property.",
-      },
-      error: "no GSC property selected",
-    };
-  }
-
-  const token = await getGoogleAccessToken({ requireScope: "gsc" });
-  if (!token.accessToken) {
-    return {
-      accepted: true,
-      name: "sync.gsc",
-      ok: false,
-      detail: {
-        lastSyncedAt: store.lastSyncedAt,
-        opportunityCount: store.opportunities.length,
-      },
-      error: token.error ?? "no offline google token",
-    };
-  }
-
-  const siteUrl =
-    (typeof payload.url === "string" && payload.url) || store.siteUrl;
-  const synced = await syncGscProperty(token.accessToken, property);
-  const next = {
-    selectedProperty: property,
-    siteUrl,
-    lastSyncedAt: new Date().toISOString(),
-    rows: synced.rows,
-    opportunities: synced.opportunities,
-  };
-  await writeGscStore(next);
-
-  let metricsPersist: { rows: number; persistedTo: "postgres" | "none" } = {
-    rows: 0,
-    persistedTo: "none",
-  };
-  let oppPersist: { count: number; persistedTo: "postgres" | "file" } = {
-    count: 0,
-    persistedTo: "file",
-  };
-  if (siteUrl) {
-    metricsPersist = await persistGscDailyRows(siteUrl, next);
-    oppPersist = await persistOpportunities(siteUrl, draftsFromGsc(next));
-  }
-
-  return {
-    accepted: true,
-    name: "sync.gsc",
-    ok: true,
-    detail: {
-      mode: "live",
-      property,
-      siteUrl,
-      lastSyncedAt: next.lastSyncedAt,
-      rowCount: next.rows.length,
-      opportunityCount: next.opportunities.length,
-      tokenSource: token.source,
-      metricsPersist,
-      opportunitiesPersist: oppPersist,
     },
   };
 }
@@ -265,10 +184,6 @@ async function runInsightsOpportunities(
   }
 
   const drafts = [];
-  const gsc = await readGscStore();
-  if (gsc.opportunities.length) {
-    drafts.push(...draftsFromGsc(gsc));
-  }
 
   try {
     const page = await fetchText(url, { timeoutMs: 25_000 });
@@ -312,8 +227,6 @@ export async function enqueueJob(
         return await runCrawlFull(payload);
       case "advice.daily":
         return await runAdviceDaily(payload);
-      case "sync.gsc":
-        return await runSyncGsc(payload);
       case "sync.ga4":
         return await runSyncGa4(payload);
       case "insights.opportunities":

@@ -7,21 +7,16 @@ export type KeywordOpportunity = {
   intent: string | null;
   rationale: string;
   actions: string[];
-  source: "gsc" | "ai" | "heuristic";
+  source: "ai" | "heuristic";
 };
 
 export type KeywordsResponse = {
   url: string;
   fetchedUrl?: string;
   generatedAt: string;
-  source: "ai" | "heuristic" | "gsc";
+  source: "ai" | "heuristic";
   model: string | null;
   warning: string | null;
-  gsc?: {
-    property: string | null;
-    lastSyncedAt: string | null;
-    rowCount: number;
-  };
   signals?: {
     title: string | null;
     description: string | null;
@@ -31,7 +26,7 @@ export type KeywordsResponse = {
   items: KeywordOpportunity[];
 };
 
-const CACHE_KEY = "webagent:keywords-cache:v2";
+const CACHE_KEY = "webagent:keywords-cache:v3";
 const memory = new Map<string, { savedAt: number; data: KeywordsResponse }>();
 
 function cacheId(url: string, locale = "zh") {

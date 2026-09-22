@@ -104,7 +104,7 @@ export function Ga4ConnectPanel({
         </div>
         {!status?.hasGa4Scope && !status?.hasOfflineToken ? (
           <a
-            href={`/api/gsc/connect?callbackUrl=${encodeURIComponent(callback)}`}
+            href={`/api/google/connect?callbackUrl=${encodeURIComponent(callback)}`}
             className="rounded-lg bg-[var(--brand-blue)] px-3 py-2 text-sm font-medium text-white hover:bg-[var(--brand-blue-deep)]"
           >
             {t("ga4.connectGoogle")}

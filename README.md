@@ -71,8 +71,8 @@ cd apps/web && npm run dev
 
 | 路径 | 页面 |
 | --- | --- |
-| `/` | Dashboard（分数 / 接入状态 / 爬取） |
-| `/onboarding` | 接入向导（URL → GSC → GA4 → 扫描） |
+| `/` | 跳转到网站分析 |
+| `/onboarding` | 接入向导（URL → GA4 → 扫描） |
 | `/audit` | 网站分析（PageSpeed） |
 | `/keywords` | 关键词机会 |
 | `/content` | 内容机会 |
@@ -85,7 +85,7 @@ cd apps/web && npm run dev
 | `/api/opportunities` | 机会列表 / 重建落库 |
 | `/api/cron/run` | 任务入口（crawl / advice.daily / sync.*） |
 
-Google 登录会同时申请 GSC + GA4 只读，并持久化 refresh token（`.data/google-tokens.json`），供 cron 离线重拉。若此前已授权，请重新「连接 Google」以补齐 Analytics scope。
+Google 登录会申请 GA4 只读，并持久化 refresh token（`.data/google-tokens.json`），供 cron 离线重拉。若此前已授权，请重新「连接 Google」以补齐 Analytics scope。
 
 ## Cloudflare Workers 部署
 
@@ -145,7 +145,7 @@ Webagent/
 ## 版本路线（摘要）
 
 ```text
-V1  爬虫 + SEO/GEO Readiness + GSC/GA + 增长机会（只读建议）
+V1  爬虫 + SEO/GEO Readiness + PageSpeed/GA + 增长机会（只读建议）
 V2  竞品 + 内容生成 + GEO 引用探测 + 页面/内链建议
 V3  GitHub 改代码 + 测试 + PR
 V4  自动执行 + 效果监控 + 策略自调
@@ -155,6 +155,6 @@ V4  自动执行 + 效果监控 + 策略自调
 
 建议先以自有站点（如 Kinolin）打通：
 
-`GA4 + GSC + Cloudflare + 网站源码 + GitHub + AI（SEO + GEO）`
+`GA4 + Cloudflare + 网站源码 + GitHub + AI（SEO + GEO）`
 
 再考虑多租户对外服务。

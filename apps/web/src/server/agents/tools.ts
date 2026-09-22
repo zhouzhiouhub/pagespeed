@@ -1,6 +1,5 @@
 import { fetchText } from "@/server/http/fetch";
 import { extractPageSignals } from "@/server/keywords/extract";
-import { readGscStore } from "@/server/gsc/store";
 import { readGa4Store } from "@/server/ga4/store";
 import { getLatestAuditForUrl } from "@/server/sites/repo";
 import { listPersistedOpportunities } from "@/server/insights/opportunities-store";
@@ -8,7 +7,6 @@ import { parseCrawledHtml } from "@/server/crawler/parse-page";
 
 export type AgentToolName =
   | "read_page"
-  | "read_gsc"
   | "read_ga"
   | "read_audit"
   | "read_opportunities";
@@ -56,41 +54,6 @@ export async function toolReadPage(url: string): Promise<AgentToolResult> {
       warning: err instanceof Error ? err.message : "read_page failed",
     };
   }
-}
-
-export async function toolReadGsc(siteUrl?: string): Promise<AgentToolResult> {
-  const store = await readGscStore();
-  let matches = true;
-  if (siteUrl && store.siteUrl) {
-    try {
-      const host = new URL(siteUrl).hostname;
-      matches =
-        store.siteUrl.includes(host) ||
-        siteUrl.includes(store.siteUrl) ||
-        Boolean(store.selectedProperty);
-    } catch {
-      matches = true;
-    }
-  }
-  if (!store.lastSyncedAt || !matches) {
-    return {
-      tool: "read_gsc",
-      ok: false,
-      data: { connected: Boolean(store.selectedProperty) },
-      warning: "GSC not synced for this site",
-    };
-  }
-  return {
-    tool: "read_gsc",
-    ok: true,
-    data: {
-      property: store.selectedProperty,
-      lastSyncedAt: store.lastSyncedAt,
-      rowCount: store.rows.length,
-      topOpportunities: store.opportunities.slice(0, 10),
-      sampleRows: store.rows.slice(0, 10),
-    },
-  };
 }
 
 export async function toolReadGa(siteUrl?: string): Promise<AgentToolResult> {
@@ -175,7 +138,6 @@ export async function runAgentTools(
   const results: AgentToolResult[] = [];
   for (const tool of tools) {
     if (tool === "read_page") results.push(await toolReadPage(siteUrl));
-    else if (tool === "read_gsc") results.push(await toolReadGsc(siteUrl));
     else if (tool === "read_ga") results.push(await toolReadGa(siteUrl));
     else if (tool === "read_audit") results.push(await toolReadAudit(siteUrl));
     else if (tool === "read_opportunities")

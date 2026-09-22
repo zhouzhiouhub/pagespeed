@@ -4,12 +4,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import { Ga4ConnectPanel } from "@/components/ga4-connect-panel";
-import { GscConnectPanel } from "@/components/gsc-connect-panel";
 import { useT } from "@/components/i18n-provider";
 import { parseSiteUrl, urlErrorMessageKey } from "@/lib/url";
 import { writeOnboardingDone, writeSiteUrl } from "@/lib/site";
 
-type Step = 1 | 2 | 3 | 4 | 5;
+type Step = 1 | 2 | 3 | 4;
 
 type ScanPhase = "idle" | "crawl" | "advice" | "done" | "error";
 
@@ -32,10 +31,9 @@ export function OnboardingClient({
     () =>
       [
         { id: 1 as const, label: t("onboarding.stepUrl") },
-        { id: 2 as const, label: t("onboarding.stepGsc") },
-        { id: 3 as const, label: t("onboarding.stepGa4") },
-        { id: 4 as const, label: t("onboarding.stepScan") },
-        { id: 5 as const, label: t("onboarding.stepDone") },
+        { id: 2 as const, label: t("onboarding.stepGa4") },
+        { id: 3 as const, label: t("onboarding.stepScan") },
+        { id: 4 as const, label: t("onboarding.stepDone") },
       ] as const,
     [t],
   );
@@ -92,7 +90,7 @@ export function OnboardingClient({
       setScanPhase("done");
       setScanDetail(t("onboarding.scanDone"));
       writeOnboardingDone(true);
-      setStep(5);
+      setStep(4);
     } catch {
       setScanPhase("error");
       setError(t("common.networkError"));
@@ -182,9 +180,9 @@ export function OnboardingClient({
         {step === 2 && siteUrl ? (
           <div className="space-y-4">
             <p className="text-sm text-[var(--muted)]">
-              {t("onboarding.gscHint")}
+              {t("onboarding.ga4Hint")}
             </p>
-            <GscConnectPanel siteUrl={siteUrl} onSynced={() => undefined} />
+            <Ga4ConnectPanel siteUrl={siteUrl} onSynced={() => undefined} />
             <div className="flex flex-wrap gap-3 pt-2">
               <button
                 type="button"
@@ -205,31 +203,6 @@ export function OnboardingClient({
         ) : null}
 
         {step === 3 && siteUrl ? (
-          <div className="space-y-4">
-            <p className="text-sm text-[var(--muted)]">
-              {t("onboarding.ga4Hint")}
-            </p>
-            <Ga4ConnectPanel siteUrl={siteUrl} onSynced={() => undefined} />
-            <div className="flex flex-wrap gap-3 pt-2">
-              <button
-                type="button"
-                onClick={() => setStep(4)}
-                className="h-11 rounded-xl bg-[var(--brand-blue)] px-5 text-sm font-semibold text-white"
-              >
-                {t("onboarding.continue")}
-              </button>
-              <button
-                type="button"
-                onClick={() => setStep(4)}
-                className="h-11 rounded-xl px-5 text-sm font-medium text-[var(--muted)] ring-1 ring-[var(--border)]"
-              >
-                {t("onboarding.skip")}
-              </button>
-            </div>
-          </div>
-        ) : null}
-
-        {step === 4 && siteUrl ? (
           <div className="space-y-4">
             <p className="text-sm text-[var(--muted)]">
               {t("onboarding.scanHint")}
@@ -259,7 +232,7 @@ export function OnboardingClient({
               type="button"
               onClick={() => {
                 writeOnboardingDone(true);
-                setStep(5);
+                setStep(4);
               }}
               className="text-sm text-[var(--muted)] underline-offset-2 hover:underline"
             >
@@ -268,7 +241,7 @@ export function OnboardingClient({
           </div>
         ) : null}
 
-        {step === 5 && siteUrl ? (
+        {step === 4 && siteUrl ? (
           <div className="space-y-4">
             <p className="text-base text-[var(--fg)]">{t("onboarding.doneBody")}</p>
             <ul className="list-disc space-y-1 pl-5 text-sm text-[var(--muted)]">

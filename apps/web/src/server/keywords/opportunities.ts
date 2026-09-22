@@ -17,7 +17,7 @@ export type KeywordOpportunity = {
   intent: string | null;
   rationale: string;
   actions: string[];
-  source: "gsc" | "ai" | "heuristic";
+  source: "ai" | "heuristic";
 };
 
 const llmItemSchema = z.object({
@@ -124,7 +124,7 @@ ${JSON.stringify(signals, null, 2)}
 Requirements:
 1. Output a JSON array; each item fields: query, position(8-25 or null), potential(1-5 int), page(path), trend7d(negative = rank improving, nullable), intent, rationale, actions(string array)
 2. Prefer: product/category terms, question long-tails, terms close to existing landing pages
-3. Do not invent absurd search-volume numbers; if no real GSC data, give reasonable "to verify" estimates and say so in rationale
+3. Do not invent absurd search-volume numbers; give reasonable "to verify" estimates and say so in rationale
 4. 8-12 items
 5. ${llmLanguageRule(locale)}
 6. JSON only`;

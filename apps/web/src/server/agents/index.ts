@@ -12,7 +12,6 @@ export { runSeoAgent } from "@/server/agents/seo-agent";
 export {
   runAgentTools,
   toolReadPage,
-  toolReadGsc,
   toolReadGa,
   toolReadAudit,
   toolReadOpportunities,

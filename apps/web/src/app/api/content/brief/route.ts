@@ -20,7 +20,7 @@ const bodySchema = z.object({
     intent: z.string().nullable(),
     rationale: z.string(),
     geoHint: z.string().nullable(),
-    source: z.enum(["gsc", "ai", "heuristic"]),
+    source: z.enum(["ai", "heuristic"]),
   }),
 });
 

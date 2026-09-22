@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { getGa4Status } from "@/server/integrations/ga4";
 import { getIntegrationStatus } from "@/server/integrations";
-import { readGscStore } from "@/server/gsc/store";
 import { readAdviceRun } from "@/server/advice/store";
 import { getLatestAuditForUrl, ensureSite } from "@/server/sites/repo";
 import { isDatabaseAvailable } from "@/server/db/ready";
@@ -29,13 +28,11 @@ export async function GET(request: Request) {
 
   const site = await ensureSite(parsed.url);
   const latest = await getLatestAuditForUrl(parsed.url);
-  const gsc = await readGscStore();
   const advice = await readAdviceRun(parsed.url);
   const ga4 = await getGa4Status(parsed.url, locale);
   const pagespeed = await getIntegrationStatus(site.id, "pagespeed");
   const dbOk = await isDatabaseAvailable();
 
-  const gscConnected = Boolean(gsc.selectedProperty && gsc.lastSyncedAt);
   const openCount = advice
     ? advice.items.filter((i) => i.userState === "open").length
     : 0;
@@ -61,17 +58,8 @@ export async function GET(request: Request) {
       : null,
     integrations: {
       pagespeed: pagespeed.connected,
-      gsc: gscConnected,
       ga4: ga4.connected,
     },
-    gsc: gscConnected
-      ? {
-          property: gsc.selectedProperty,
-          lastSyncedAt: gsc.lastSyncedAt,
-          rowCount: gsc.rows.length,
-          opportunityCount: gsc.opportunities.length,
-        }
-      : null,
     ga4: {
       ...ga4,
       topPages: ga4.topPages ?? [],

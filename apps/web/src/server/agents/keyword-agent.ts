@@ -1,6 +1,5 @@
 import { extractPageSignals } from "@/server/keywords/extract";
 import { buildKeywordOpportunities } from "@/server/keywords/opportunities";
-import { readGscStore } from "@/server/gsc/store";
 import { translate, type MessageKey } from "@/lib/i18n/messages";
 import type { Locale } from "@/lib/i18n/locale";
 import {
@@ -20,7 +19,7 @@ function t(
 }
 
 /**
- * Keyword Agent — GSC opportunities first, else page-signal heuristics.
+ * Keyword Agent — page-signal AI / heuristics.
  */
 export async function runKeywordAgent(
   ctx: LightAgentContext,
@@ -29,42 +28,6 @@ export async function runKeywordAgent(
   const { siteUrl, locale } = ctx;
   const result = emptyAgentResult("keyword");
   const candidates: LightAgentCandidate[] = [];
-
-  const gsc = await readGscStore();
-  const sameSite =
-    gsc.siteUrl &&
-    (gsc.siteUrl === siteUrl ||
-      siteUrl.startsWith(gsc.siteUrl) ||
-      gsc.siteUrl.includes(new URL(siteUrl).hostname));
-
-  if (sameSite && gsc.opportunities.length > 0) {
-    result.sources.push("gsc");
-    result.sources.push("agent:keyword");
-    for (const op of gsc.opportunities.slice(0, 8)) {
-      const score = Math.min(0.95, 0.45 + op.potential * 0.1);
-      candidates.push({
-        id: `kw-gsc:${op.query}`,
-        priority: priorityFromScore(score),
-        type: "keyword",
-        title: t(locale, "server.advice.kwGrabTitle", { query: op.query }),
-        summary: op.rationale,
-        evidence: {
-          query: op.query,
-          position: op.position,
-          page: op.page,
-          potential: op.potential,
-          source: "gsc",
-          agent: "keyword",
-        },
-        suggestedActions: op.actions,
-        score,
-        href: `/keywords?url=${encodeURIComponent(siteUrl)}`,
-        ctaLabel: t(locale, "server.advice.viewKeywords"),
-      });
-    }
-    result.candidates = candidates;
-    return result;
-  }
 
   const html = opts?.pageHtml;
   if (!html) {

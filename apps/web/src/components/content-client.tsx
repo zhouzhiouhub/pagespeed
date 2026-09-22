@@ -25,7 +25,6 @@ function stars(n: number) {
 }
 
 function sourceLabel(source: ContentGapsResponse["source"], t: TFn) {
-  if (source === "gsc") return "Google Search Console";
   if (source === "ai") return t("content.sourceAi");
   return t("content.sourceHeuristic");
 }

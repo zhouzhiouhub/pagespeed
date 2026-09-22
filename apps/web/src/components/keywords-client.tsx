@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { PageShell } from "@/components/page-shell";
-import { GscConnectPanel } from "@/components/gsc-connect-panel";
 import { useI18n, useT } from "@/components/i18n-provider";
 import {
   getCachedKeywords,
@@ -55,7 +54,6 @@ function trendClass(trend: number | null) {
 }
 
 function sourceLabel(source: KeywordsResponse["source"], t: TFn) {
-  if (source === "gsc") return "Google Search Console";
   if (source === "ai") return t("keywords.sourceAi");
   return t("keywords.sourceHeuristic");
 }
@@ -143,7 +141,7 @@ function DetailPanel({
   const estimated =
     item.position != null
       ? `#${item.position} → #${Math.max(3, item.position - 8)}~${Math.max(5, item.position - 4)}`
-      : t("keywords.awaitingGsc");
+      : t("keywords.rankEstimate");
 
   useEffect(() => {
     setPlan(null);
@@ -420,19 +418,6 @@ export function KeywordsClient({ initialUrl }: { initialUrl: string | null }) {
         </div>
       ) : (
         <div className="space-y-5">
-          <GscConnectPanel
-            siteUrl={siteUrl}
-            onSynced={() => {
-              // Force reload from server GSC store
-              try {
-                sessionStorage.removeItem("webagent:keywords-cache:v2");
-              } catch {
-                // ignore
-              }
-              void load(siteUrl, { force: true });
-            }}
-          />
-
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-5 py-4">
             <div>
               <p className="text-sm text-[var(--muted)]">{t("common.currentSite")}</p>

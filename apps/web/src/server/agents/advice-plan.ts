@@ -83,7 +83,7 @@ function heuristicAdvicePlan(
       },
       {
         question: "如何验收？",
-        answer: "检查页面是否覆盖答案块/FAQ/内链，并观察 GSC 展现与点击变化。",
+        answer: "检查页面是否覆盖答案块/FAQ/内链，并观察排名与点击变化。",
       },
     ],
     outline: [

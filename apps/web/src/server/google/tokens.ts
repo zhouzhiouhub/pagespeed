@@ -103,7 +103,7 @@ export async function refreshGoogleAccessToken(refreshToken: string) {
  */
 export async function getGoogleAccessToken(opts?: {
   sessionAccessToken?: string | null;
-  requireScope?: "gsc" | "ga4" | null;
+  requireScope?: "ga4" | null;
 }): Promise<{
   accessToken: string | null;
   source: "session" | "store" | null;
@@ -142,18 +142,6 @@ export async function getGoogleAccessToken(opts?: {
     };
   }
 
-  if (opts?.requireScope === "gsc") {
-    const scope = stored.scope ?? "";
-    if (scope && !/webmasters|searchconsole/i.test(scope)) {
-      return {
-        accessToken: null,
-        source: "store",
-        scope: stored.scope,
-        email: stored.email,
-        error: "stored token missing GSC scope; reconnect Google",
-      };
-    }
-  }
   if (opts?.requireScope === "ga4") {
     const scope = stored.scope ?? "";
     if (scope && !/analytics/i.test(scope)) {
@@ -207,9 +195,9 @@ export async function getGoogleAccessToken(opts?: {
 
 export function hasScope(
   scope: string | null | undefined,
-  kind: "gsc" | "ga4",
+  kind: "ga4",
 ): boolean {
   if (!scope) return false;
-  if (kind === "gsc") return /webmasters|searchconsole/i.test(scope);
-  return /analytics\.readonly|analytics\b/i.test(scope);
+  if (kind === "ga4") return /analytics\.readonly|analytics\b/i.test(scope);
+  return false;
 }

@@ -7,14 +7,14 @@ export type ContentGap = {
   intent: string | null;
   rationale: string;
   geoHint: string | null;
-  source: "gsc" | "ai" | "heuristic";
+  source: "ai" | "heuristic";
 };
 
 export type ContentGapsResponse = {
   url: string;
   fetchedUrl?: string;
   generatedAt: string;
-  source: "gsc" | "ai" | "heuristic";
+  source: "ai" | "heuristic";
   model: string | null;
   warning: string | null;
   signals?: {
@@ -44,7 +44,7 @@ export type ContentBrief = {
   warning: string | null;
 };
 
-const CACHE_KEY = "webagent:content-cache:v2";
+const CACHE_KEY = "webagent:content-cache:v3";
 const memory = new Map<string, { savedAt: number; data: ContentGapsResponse }>();
 
 function cacheId(url: string, locale = "zh") {

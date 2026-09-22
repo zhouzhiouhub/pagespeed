@@ -1,13 +1,11 @@
 /**
- * External integrations: PageSpeed / GSC / GA4 / GitHub.
+ * External integrations: PageSpeed / GA4 / GitHub.
  */
 import { getServerEnv } from "@/server/env";
 import { getGa4Status } from "@/server/integrations/ga4";
-import { readGscStore } from "@/server/gsc/store";
 
 export type IntegrationProvider =
   | "pagespeed"
-  | "gsc"
   | "ga4"
   | "github"
   | "cloudflare";
@@ -23,14 +21,6 @@ export async function getIntegrationStatus(
     return {
       connected: Boolean(key),
       provider,
-    };
-  }
-  if (provider === "gsc") {
-    const store = await readGscStore();
-    return {
-      connected: Boolean(store.selectedProperty && store.lastSyncedAt),
-      provider,
-      note: store.selectedProperty ?? undefined,
     };
   }
   if (provider === "ga4") {
